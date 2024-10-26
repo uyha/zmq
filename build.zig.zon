@@ -1,0 +1,14 @@
+.{
+    .name = "zmq",
+    .version = "4.3.5",
+    .dependencies = .{
+        .upstream = .{
+            .url = "https://github.com/zeromq/libzmq/releases/download/v4.3.5/zeromq-4.3.5.tar.gz",
+            .hash = "12205f8ee6ea2906b3e92ddf9c5add5e9229b595bc30f6f3b376efee4c7fd93346de",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+    },
+}
