@@ -67,6 +67,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    zmq.root_module.addImport("libzmq", libzmq_module);
     b.installArtifact(zmq);
 
     const zmq_test = b.addTest(.{
@@ -74,7 +75,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    zmq_test.root_module.addImport("libzmq", libzmq_module);
+    zmq_test.root_module.addImport("zmq", &zmq.root_module);
     const zmq_test_run = b.addRunArtifact(zmq_test);
 
     const test_step = b.step("test", "Run all the tests");
