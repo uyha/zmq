@@ -3,7 +3,3 @@ comptime {
 
     testing.refAllDecls(@import("context.zig"));
 }
-
-test "Version" {
-    // const testing = @import("std").testing;
-}
