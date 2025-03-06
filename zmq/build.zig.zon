@@ -1,0 +1,18 @@
+.{
+    .name = .zmq,
+    .version = "0.0.0",
+    .minimum_zig_version = "0.14.0",
+    .fingerprint = 0x517660d436e39a48,
+
+    .dependencies = .{
+        .libzmq = .{
+            .url = "https://github.com/zeromq/libzmq/archive/34f7fa22022bed9e0e390ed3580a1c83ac4a2834.tar.gz",
+            .hash = "N-V-__8AAHUzRQAL7Ikh0_T9Nw0RdIaq1ntd_qhYGJA9AvC6",
+        },
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+    },
+}
