@@ -55,7 +55,7 @@ pub const Message = struct {
         return result;
     }
 
-    pub fn with_size(size: usize) InitError!Message {
+    pub fn withSize(size: usize) InitError!Message {
         var result = Message{ .message = undefined };
 
         if (zmq.zmq_msg_init_size(&result.message, size) == -1) {
@@ -231,7 +231,7 @@ pub const Socket = struct {
         Interrupted,
         Unexpected,
     };
-    pub fn set_option(socket: Socket, comptime option: Option, value: OptionType(option)) SetOptionError!void {
+    pub fn setOption(socket: Socket, comptime option: Option, value: OptionType(option)) SetOptionError!void {
         const raw_value = switch (option) {
             .immediate => @as(c_int, @intFromBool(value)),
             else => value,

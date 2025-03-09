@@ -11,6 +11,7 @@ pub fn main() !void {
     const content = "Hell";
     _ = content;
     var message: zmq.Message = try .with_size(6);
+    var message: zmq.Message = try .withBuffer(content, content.len);
     defer message.deinit();
 
     try socket.connect("ipc:///home/uy/Personal/playground/python/hello");
