@@ -1,13 +1,6 @@
 const std = @import("std");
 
-fn buildLibzmq(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Module {
-    const upstream = b.dependency("libzmq", .{});
-    const translate = b.addTranslateC(.{
-        .root_source_file = upstream.path("include/zmq.h"),
-        .target = target,
-        .optimize = optimize,
-    });
-
+fn buildLibzmq(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     var platform_content = std.ArrayListUnmanaged(u8).empty;
     {
         platform_content.appendSlice(
@@ -89,17 +82,25 @@ fn buildLibzmq(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
         platform_content.items,
     );
 
-    const module = b.addModule("libzmq", .{
+    const upstream = b.dependency("libzmq", .{});
+    const translate = b.addTranslateC(.{
+        .root_source_file = upstream.path("include/zmq.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const library = b.addStaticLibrary(.{
+        .name = "zmq",
         .root_source_file = translate.getOutput(),
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
-        .link_libcpp = true,
     });
-    module.addIncludePath(
+    library.linkLibC();
+    library.linkLibCpp();
+
+    library.addIncludePath(
         platform.getDirectory().path(b, "libzmq/include"),
     );
-    module.addCSourceFiles(.{
+    library.addCSourceFiles(.{
         .root = upstream.path("src"),
         .files = &.{
             // "ws_address.cpp",
@@ -217,7 +218,7 @@ fn buildLibzmq(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
         },
     });
 
-    return module;
+    return library;
 }
 
 pub fn build(b: *std.Build) void {
@@ -225,16 +226,17 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const libzmq = buildLibzmq(b, target, optimize);
-    const zmq = b.addStaticLibrary(
+    b.installArtifact(libzmq);
+
+    const zmq = b.addModule(
+        "zmq",
         .{
-            .name = "zmq",
             .root_source_file = b.path("src/zmq.zig"),
             .target = target,
             .optimize = optimize,
         },
     );
-    zmq.root_module.addImport("libzmq", libzmq);
-    b.installArtifact(zmq);
+    zmq.addImport("libzmq", libzmq.root_module);
 
     const main = b.addExecutable(.{
         .name = "main",
@@ -243,7 +245,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     b.installArtifact(main);
-    main.root_module.addImport("zmq", zmq.root_module);
+    main.root_module.addImport("zmq", zmq);
     const run_main = b.addRunArtifact(main);
 
     const run_main_step = b.step("main", "Run main");
