@@ -68,6 +68,19 @@ pub const Message = struct {
         return result;
     }
 
+    pub fn withBuffer(ptr: *const anyopaque, len: usize) InitError!Message {
+        var result = Message{ .message = undefined };
+
+        if (zmq.zmq_msg_init_buffer(&result.message, ptr, len) == -1) {
+            return switch (c._errno().*) {
+                zmq.ENOMEM => InitError.OutOfMemory,
+                else => InitError.Unexpected,
+            };
+        }
+
+        return result;
+    }
+
     pub fn deinit(self: *Message) void {
         _ = zmq.zmq_msg_close(&self.message);
     }
@@ -189,13 +202,8 @@ pub const Socket = struct {
         CannotRoute,
         Unexpected,
     };
-    pub fn send_msg(self: Socket, message: *Message, send_flags: SendFlags) SendError!void {
-        const result = zmq.zmq_msg_send(&message.message, self.handle, @bitCast(send_flags));
-        std.debug.print("{}\n", .{result});
-        if (result != -1) {
-            return;
-        }
 
+    fn sendError() SendError {
         return switch (c._errno().*) {
             zmq.EAGAIN => SendError.WouldBlock,
             zmq.ENOTSUP => SendError.SendMsgNotSupported,
@@ -208,6 +216,30 @@ pub const Socket = struct {
             zmq.EHOSTUNREACH => SendError.CannotRoute,
             else => SendError.Unexpected,
         };
+    }
+    pub fn sendMsg(self: Socket, message: *Message, flags: SendFlags) SendError!void {
+        const result = zmq.zmq_msg_send(&message.message, self.handle, @bitCast(flags));
+        if (result != -1) {
+            return;
+        }
+
+        return sendError();
+    }
+    pub fn sendBuffer(self: Socket, ptr: *const anyopaque, len: usize, flags: SendFlags) SendError!void {
+        const result = zmq.zmq_send(self.handle, ptr, len, @bitCast(flags));
+        if (result != -1) {
+            return;
+        }
+
+        return sendError();
+    }
+    pub fn sendConst(self: Socket, ptr: *const anyopaque, len: usize, flags: SendFlags) SendError!void {
+        const result = zmq.zmq_send_const(self.handle, ptr, len, @bitCast(flags));
+        if (result != -1) {
+            return;
+        }
+
+        return sendError();
     }
 
     pub const Option = enum(c_int) {

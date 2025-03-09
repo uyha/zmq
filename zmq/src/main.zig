@@ -8,13 +8,11 @@ pub fn main() !void {
     const socket: zmq.Socket = try .init(context, .push);
     defer socket.deinit();
 
-    const content = "Hell";
-    _ = content;
-    var message: zmq.Message = try .with_size(6);
+    const content = "Hello";
     var message: zmq.Message = try .withBuffer(content, content.len);
     defer message.deinit();
 
     try socket.connect("ipc:///home/uy/Personal/playground/python/hello");
-    std.debug.print("{!}\n", .{socket.send_msg(&message, .more)});
-    std.debug.print("{!}\n", .{socket.send_msg(&message, .noblock)});
+    std.debug.print("{!}\n", .{socket.sendMsg(&message, .more)});
+    std.debug.print("{!}\n", .{socket.sendConst(content, content.len, .noblock)});
 }
