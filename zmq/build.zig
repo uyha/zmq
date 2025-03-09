@@ -88,6 +88,7 @@ fn buildLibzmq(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
         .target = target,
         .optimize = optimize,
     });
+    translate.defineCMacro("ZMQ_BUILD_DRAFT_API", "");
     const library = b.addStaticLibrary(.{
         .name = "zmq",
         .root_source_file = translate.getOutput(),
@@ -97,10 +98,11 @@ fn buildLibzmq(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     library.linkLibC();
     library.linkLibCpp();
 
-    library.addIncludePath(
+    library.root_module.addIncludePath(
         platform.getDirectory().path(b, "libzmq/include"),
     );
-    library.addCSourceFiles(.{
+    library.root_module.addCMacro("ZMQ_BUILD_DRAFT_API", "");
+    library.root_module.addCSourceFiles(.{
         .root = upstream.path("src"),
         .files = &.{
             // "ws_address.cpp",
