@@ -19,6 +19,11 @@ pub fn version() Version {
     return result;
 }
 
+pub const Capability = enum { ipc, pgm, tipc, norm, curve, gssapi, draft };
+pub fn has(capability: Capability) bool {
+    return zmq.zmq_has(std.enums.tagName(Capability, capability).?.ptr) != 0;
+}
+
 pub const Context = @import("Context.zig");
 pub const Message = @import("Message.zig");
 pub const Socket = @import("Socket.zig");
