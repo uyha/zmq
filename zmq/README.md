@@ -2,6 +2,8 @@
 
 ## Binding functions status
 
+All the binding functions live in the `zmq` namespace.
+
 ### Atomic Counter
 
 - [ ] `zmq_atomic_counter_dec`
@@ -44,7 +46,7 @@
 
 ### Message
 
-- [ ] `zmq_msg_close`
+- [X] `zmq_msg_close` -> `Message.deinit`
 - [ ] `zmq_msg_copy`
 - [X] `zmq_msg_data` -> `Message.data`
 - [ ] `zmq_msg_get`
@@ -108,10 +110,10 @@
 
 ### Runtime inspection
 
-- [ ] `zmq_has`
-- [X] `zmq_version`
+- [X] `zmq_has` -> `has`
+- [X] `zmq_version` -> `version`
 
 ### Utilities
 
-- [X] `zmq_errno`
+- [X] `zmq_errno` -> `errno`
 - [ ] `zmq_strerror`
