@@ -56,3 +56,50 @@ pub fn set(self: Self, comptime option: SetOption, value: SetOptionType(option))
         };
     }
 }
+
+pub const GetError = error{Unexpected};
+// The underlying function `zmq_ctx_get_ext` does not set the actual length of passed in
+// size pointer despite what the document says. Hence, the slice pointer passed in for
+// .thread_name_prefix will not have its `len` updated.
+pub fn get(self: Self, comptime option: GetOption, out: *GetOptionType(option)) GetError!void {
+    const Out = @TypeOf(out);
+
+    const result = get: switch (Out) {
+        *bool => {
+            var value: c_int = undefined;
+            var size: usize = @sizeOf(@TypeOf(value));
+
+            const result = zmq.zmq_ctx_get_ext(
+                self.handle,
+                @intFromEnum(option),
+                &value,
+                &size,
+            );
+            if (result != -1) {
+                out.* = value != 0;
+            }
+
+            break :get result;
+        },
+        *[:0]u8 => {
+            const result = zmq.zmq_ctx_get_ext(
+                self.handle,
+                @intFromEnum(option),
+                out.ptr,
+                &out.len,
+            );
+
+            break :get result;
+        },
+        else => @compileError("Unrecognized type: " ++ @typeName(Out)),
+    };
+
+    if (result == -1) {
+        return err: switch (c._errno().*) {
+            else => |errno| {
+                std.debug.print("{}\n", .{errno});
+                break :err SetError.Unexpected;
+            },
+        };
+    }
+}
