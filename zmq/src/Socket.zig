@@ -135,27 +135,21 @@ fn sendError() SendError {
 }
 pub fn sendMsg(self: Self, message: *Message, flags: SendFlags) SendError!void {
     const result = zmq.zmq_msg_send(&message.message, self.handle, @bitCast(flags));
-    if (result != -1) {
-        return;
+    if (result == -1) {
+        return sendError();
     }
-
-    return sendError();
 }
 pub fn sendBuffer(self: Self, ptr: *const anyopaque, len: usize, flags: SendFlags) SendError!void {
     const result = zmq.zmq_send(self.handle, ptr, len, @bitCast(flags));
-    if (result != -1) {
-        return;
+    if (result == -1) {
+        return sendError();
     }
-
-    return sendError();
 }
 pub fn sendConst(self: Self, ptr: *const anyopaque, len: usize, flags: SendFlags) SendError!void {
     const result = zmq.zmq_send_const(self.handle, ptr, len, @bitCast(flags));
-    if (result != -1) {
-        return;
+    if (result == -1) {
+        return sendError();
     }
-
-    return sendError();
 }
 
 pub const Option = enum(c_int) {
