@@ -31,6 +31,16 @@ pub fn deinit(self: Self) void {
     _ = zmq.zmq_ctx_term(self.handle);
 }
 
+pub const ShutdownError = error{ ContextInvalid, Unexpected };
+pub fn shutdown(self: Self) ShutdownError!void {
+    if (zmq.zmq_ctx_shutdown(self.handle) == -1) {
+        return switch (errno()) {
+            zmq.EFAULT => ShutdownError.ContextInvalid,
+            else => ShutdownError.Unexpected,
+        };
+    }
+}
+
 pub const SetError = error{ OptionInvalid, Unexpected };
 pub fn set(self: Self, comptime option: SetOption, value: SetOptionType(option)) SetError!void {
     const Value = @TypeOf(value);
