@@ -2,6 +2,12 @@ const zmq = @import("libzmq");
 const std = @import("std");
 const c = @import("std").c;
 
+const opt = @import("context/option.zig");
+const SetOption = opt.SetOption;
+const SetOptionType = opt.SetOptionType;
+const GetOption = opt.GetOption;
+const GetOptionType = opt.GetOptionType;
+
 const Self = @This();
 
 handle: *anyopaque,
@@ -23,36 +29,27 @@ pub fn deinit(self: Self) void {
     _ = zmq.zmq_ctx_term(self.handle);
 }
 
-pub const Option = enum(c_int) {
-    blocky = zmq.ZMQ_BLOCKY,
-    io_threads = zmq.ZMQ_IO_THREADS,
-    thread_sched_policy = zmq.ZMQ_THREAD_SCHED_POLICY,
-    thread_priority = zmq.ZMQ_THREAD_PRIORITY,
-    thread_affinity_cpu_add = zmq.ZMQ_THREAD_AFFINITY_CPU_ADD,
-    thread_affinity_cpu_remove = zmq.ZMQ_THREAD_AFFINITY_CPU_REMOVE,
-    thread_name_prefix = zmq.ZMQ_THREAD_NAME_PREFIX,
-    ax_msgsz = zmq.ZMQ_MAX_MSGSZ,
-    ero_copy_recv = zmq.ZMQ_ZERO_COPY_RECV,
-    ax_sockets = zmq.ZMQ_MAX_SOCKETS,
-    ipv6 = zmq.ZMQ_IPV6,
-};
-
-pub fn OptionType(option: Option) type {
-    return switch (option) {
-        .blocky, .zero_copy_recv, .ipv6 => bool,
-        else => c_int,
-    };
-}
-
 pub const SetError = error{ OptionInvalid, Unexpected };
-pub fn set(self: Self, comptime option: Option, value: OptionType(option)) SetError!void {
+pub fn set(self: Self, comptime option: SetOption, value: SetOptionType(option)) SetError!void {
     const Value = @TypeOf(value);
-    const raw_value: c_int = switch (Value) {
-        bool => @intFromBool(value),
-        c_int => value,
+    const raw_value = switch (Value) {
+        bool => @as(c_int, @intFromBool(value)),
+        c_int, [:0]const u8 => value,
         else => @compileError("Unrecognized type: " ++ @typeName(Value)),
     };
-    if (zmq.zmq_ctx_set(self.handle, option, raw_value) == -1) {
+    const RawValue = @TypeOf(raw_value);
+
+    const ptr, const size = switch (RawValue) {
+        c_int => .{ &raw_value, @sizeOf(RawValue) },
+        [:0]const u8 => .{ raw_value.ptr, raw_value.len + 1 },
+        else => @compileError("Unrecognized type: " ++ @typeName(RawValue)),
+    };
+    if (zmq.zmq_ctx_set_ext(
+        self.handle,
+        @intFromEnum(option),
+        ptr,
+        size,
+    ) == -1) {
         return switch (c._errno().*) {
             zmq.EINVAL => SetError.OptionInvalid,
             else => SetError.Unexpected,
