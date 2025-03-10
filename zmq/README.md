@@ -29,7 +29,7 @@ All the binding functions live in the `zmq` namespace.
 - [X] `zmq_close` -> `Socket.deinit`
 - [X] `zmq_connect` -> `Socket.connect`
 - [ ] `zmq_connect_peer`
-- [ ] `zmq_disconnect`
+- [X] `zmq_disconnect` -> `Socket.disconnect`
 - [X] `zmq_getsockopt` -> `Socket.get`
 - [ ] `zmq_recv`
 - [ ] ~~`zmq_recvmsg`~~ (to be deprecated, `zmq_msg_recv` is used instead)
@@ -42,7 +42,7 @@ All the binding functions live in the `zmq` namespace.
 - [X] `zmq_socket` -> `Socket.init`
 - [ ] `zmq_socket_monitor`
 - [ ] `zmq_socket_monitor_versioned`
-- [ ] `zmq_unbind`
+- [X] `zmq_unbind` -> `Socket.unbind`
 
 ### Message
 

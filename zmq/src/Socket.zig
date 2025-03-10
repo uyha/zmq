@@ -71,6 +71,27 @@ pub fn connect(socket: Self, endpoint: [:0]const u8) ConnectError!void {
     };
 }
 
+pub const DisconnectError = error{
+    EndpointInvalid,
+    ContextInvalid,
+    SocketInvalid,
+    EndpointNotBound,
+    Unexpected,
+};
+pub fn disconnect(socket: Self, endpoint: [:0]const u8) DisconnectError!void {
+    if (zmq.zmq_disconnect(socket.handle, endpoint.ptr) != -1) {
+        return;
+    }
+
+    return switch (errno()) {
+        zmq.EINVAL => DisconnectError.EndpointInvalid,
+        zmq.ETERM => DisconnectError.ContextInvalid,
+        zmq.ENOTSOCK => DisconnectError.SocketInvalid,
+        zmq.ENOENT => DisconnectError.EndpointNotBound,
+        else => DisconnectError.Unexpected,
+    };
+}
+
 pub const BindError = error{
     EndpointInvalid,
     TransportNotSupported,
@@ -97,7 +118,27 @@ pub fn bind(socket: Self, endpoint: [:0]const u8) BindError!void {
         zmq.ETERM => BindError.ContextInvalid,
         zmq.ENOTSOCK => BindError.SocketInvalid,
         zmq.EMTHREAD => BindError.NoThreadAvaiable,
-        else => ConnectError.Unexpected,
+        else => BindError.Unexpected,
+    };
+}
+
+pub const UnbindError = error{
+    EndpointInvalid,
+    ContextInvalid,
+    SocketInvalid,
+    EndpointNotBound,
+    Unexpected,
+};
+pub fn unbind(socket: Self, endpoint: [:0]const u8) UnbindError!void {
+    if (zmq.zmq_unbind(socket.handle, endpoint.ptr) != -1) {
+        return;
+    }
+    return switch (errno()) {
+        zmq.EINVAL => UnbindError.EndpointInvalid,
+        zmq.ETERM => UnbindError.ContextInvalid,
+        zmq.ENOTSOCK => UnbindError.SocketInvalid,
+        zmq.ENOENT => UnbindError.EndpointNotBound,
+        else => UnbindError.Unexpected,
     };
 }
 
