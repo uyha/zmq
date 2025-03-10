@@ -40,6 +40,9 @@ pub fn init(context: Context, socket_type: Type) InitError!Self {
 
     return .{ .handle = handle.? };
 }
+pub fn deinit(socket: Self) void {
+    _ = zmq.zmq_close(socket.handle);
+}
 
 pub const ConnectError = error{
     EndpointInvalid,
@@ -149,10 +152,6 @@ pub fn sendConst(self: Self, ptr: *const anyopaque, len: usize, flags: SendFlags
     if (result == -1) {
         return sendError();
     }
-}
-
-pub fn deinit(socket: Self) void {
-    _ = zmq.zmq_close(socket.handle);
 }
 
 pub const SetError = error{
