@@ -22,3 +22,4 @@ pub fn version() Version {
 pub const Context = @import("Context.zig");
 pub const Message = @import("Message.zig");
 pub const Socket = @import("Socket.zig");
+pub const errno = @import("errno.zig").errno;

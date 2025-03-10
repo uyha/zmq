@@ -6,6 +6,8 @@ const Self = @This();
 
 message: zmq.struct_zmq_msg_t,
 
+const errno = @import("errno.zig").errno;
+
 pub const InitError = error{
     OutOfMemory,
     Unexpected,
@@ -22,7 +24,7 @@ pub fn withSize(size: usize) InitError!Self {
     var result = Self{ .message = undefined };
 
     if (zmq.zmq_msg_init_size(&result.message, size) == -1) {
-        return switch (c._errno().*) {
+        return switch (errno()) {
             zmq.ENOMEM => InitError.OutOfMemory,
             else => InitError.Unexpected,
         };
@@ -35,7 +37,7 @@ pub fn withBuffer(ptr: *const anyopaque, len: usize) InitError!Self {
     var result = Self{ .message = undefined };
 
     if (zmq.zmq_msg_init_buffer(&result.message, ptr, len) == -1) {
-        return switch (c._errno().*) {
+        return switch (errno()) {
             zmq.ENOMEM => InitError.OutOfMemory,
             else => InitError.Unexpected,
         };

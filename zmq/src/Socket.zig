@@ -18,6 +18,8 @@ pub const PrincipalNameType = opt.PrincipalNameType;
 
 pub const Type = @import("socket/type.zig").Type;
 
+const errno = @import("errno.zig").errno;
+
 const Self = @This();
 
 handle: *anyopaque,
@@ -31,7 +33,7 @@ pub fn init(context: Context, socket_type: Type) InitError!Self {
     const handle = zmq.zmq_socket(context.handle, @intFromEnum(socket_type));
 
     if (handle == null) {
-        return switch (c._errno().*) {
+        return switch (errno()) {
             zmq.EMFILE => InitError.TooManyOpenFiles,
             zmq.EFAULT, zmq.ETERM => InitError.InvalidContext,
             else => InitError.Unexpected,
@@ -58,7 +60,7 @@ pub fn connect(socket: Self, endpoint: [:0]const u8) ConnectError!void {
         return;
     }
 
-    return switch (c._errno().*) {
+    return switch (errno()) {
         zmq.EINVAL => ConnectError.EndpointInvalid,
         zmq.ETERM => ConnectError.ContextInvalid,
         zmq.ENOTSOCK => ConnectError.SocketInvalid,
@@ -85,7 +87,7 @@ pub fn bind(socket: Self, endpoint: [:0]const u8) BindError!void {
     if (zmq.zmq_bind(socket.handle, endpoint.ptr) != -1) {
         return;
     }
-    return switch (c._errno().*) {
+    return switch (errno()) {
         zmq.EINVAL => BindError.EndpointInvalid,
         zmq.EPROTONOSUPPORT => BindError.TransportNotSupported,
         zmq.ENOCOMPATPROTO => BindError.TransportNotCompatible,
@@ -122,7 +124,7 @@ const SendError = error{
 };
 
 fn sendError() SendError {
-    return switch (c._errno().*) {
+    return switch (errno()) {
         zmq.EAGAIN => SendError.WouldBlock,
         zmq.ENOTSUP => SendError.SendMsgNotSupported,
         zmq.EINVAL => SendError.MultipartNotSupported,
@@ -190,7 +192,7 @@ pub fn set(self: Self, comptime option: SetOption, value: SetOptionType(option))
         return;
     }
 
-    return switch (c._errno().*) {
+    return switch (errno()) {
         zmq.EINVAL => SetError.OptionInvalid,
         zmq.ETERM => SetError.ContextInvalid,
         zmq.ENOTSOCK => SetError.SocketInvalid,
@@ -251,7 +253,7 @@ pub fn get(self: Self, comptime option: GetOption, out: *GetOptionType(option)) 
     };
 
     if (result == -1) {
-        return switch (c._errno().*) {
+        return switch (errno()) {
             zmq.EINVAL => SetError.OptionInvalid,
             zmq.ETERM => SetError.ContextInvalid,
             zmq.ENOTSOCK => SetError.SocketInvalid,

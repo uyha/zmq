@@ -8,6 +8,8 @@ const SetOptionType = opt.SetOptionType;
 const GetOption = opt.GetOption;
 const GetOptionType = opt.GetOptionType;
 
+const errno = @import("errno.zig").errno;
+
 const Self = @This();
 
 handle: *anyopaque,
@@ -16,7 +18,7 @@ pub const InitError = error{ TooManyOpenFiles, Unexpected };
 pub inline fn init() InitError!Self {
     const handle = zmq.zmq_ctx_new();
     if (handle == null) {
-        return switch (c._errno().*) {
+        return switch (errno()) {
             zmq.EMFILE => InitError.TooManyOpenFiles,
             else => InitError.Unexpected,
         };
@@ -50,7 +52,7 @@ pub fn set(self: Self, comptime option: SetOption, value: SetOptionType(option))
         ptr,
         size,
     ) == -1) {
-        return switch (c._errno().*) {
+        return switch (errno()) {
             zmq.EINVAL => SetError.OptionInvalid,
             else => SetError.Unexpected,
         };
@@ -95,11 +97,8 @@ pub fn get(self: Self, comptime option: GetOption, out: *GetOptionType(option)) 
     };
 
     if (result == -1) {
-        return err: switch (c._errno().*) {
-            else => |errno| {
-                std.debug.print("{}\n", .{errno});
-                break :err SetError.Unexpected;
-            },
+        return switch (errno()) {
+            else => SetError.Unexpected,
         };
     }
 }
