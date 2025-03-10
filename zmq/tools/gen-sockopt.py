@@ -35,7 +35,7 @@ for option in sel.xpath("//div[@class='sect2']"):
     if name in deprecated:
         continue
 
-    zig_name = f"{name.lstrip("ZMQ_").lower()}"
+    zig_name = f"{name.removeprefix("ZMQ_").lower()}"
     macro = f"zmq.{name}"
 
     try:
