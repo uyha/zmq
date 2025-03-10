@@ -377,21 +377,15 @@ pub const SetOptionError = error{
     Unexpected,
 };
 pub fn set(socket: Self, comptime option: Option, value: OptionType(option)) SetOptionError!void {
-    const raw_value = raw_value: switch (OptionType(option)) {
-        bool => @as(c_int, @intFromBool(value)),
-        else => |Opt| {
-            break :raw_value switch (@typeInfo(Opt)) {
-                .@"struct" => |Struct| {
-                    if (Struct.layout == .@"packed") {
-                        break :raw_value @as(Struct.backing_integer.?, @bitCast(value));
-                    } else {
-                        @compileError("Unrecognized type: " ++ @typeName(Opt));
-                    }
-                },
-                .@"enum" => @intFromEnum(value),
-                else => @compileError("Unrecognized type: " ++ @typeName(Opt)),
-            };
+    const Value = @TypeOf(value);
+    const raw_value = switch (@typeInfo(Value)) {
+        .bool => @as(c_int, @intFromBool(value)),
+        .@"struct" => |Struct| switch (Struct.layout) {
+            .@"packed" => @as(Struct.backing_integer.?, @bitCast(value)),
+            else => @compileError("Unrecognized type: " ++ @typeName(Value)),
         },
+        .@"enum" => @intFromEnum(value),
+        else => @compileError("Unrecognized type: " ++ @typeName(Value)),
     };
     const RawValue = @TypeOf(raw_value);
 
