@@ -6,8 +6,15 @@ const Context = @import("Context.zig");
 const Message = @import("Message.zig");
 
 const opt = @import("socket/option.zig");
-const SetOption = opt.SetOption;
-const SetOptionType = opt.SetOptionType;
+pub const SetOption = opt.SetOption;
+pub const SetOptionType = opt.SetOptionType;
+pub const GetOption = opt.GetOption;
+pub const GetOptionType = opt.GetOptionType;
+pub const Mechanism = opt.Mechanism;
+pub const ReconnectStop = opt.ReconnectStop;
+pub const RouterNotify = opt.RouterNotify;
+pub const NormMode = opt.NormMode;
+pub const PrincipalNameType = opt.PrincipalNameType;
 
 pub const Type = @import("socket/type.zig").Type;
 
@@ -155,7 +162,7 @@ pub const SetError = error{
     Interrupted,
     Unexpected,
 };
-pub fn set(socket: Self, comptime option: SetOption, value: SetOptionType(option)) SetError!void {
+pub fn set(self: Self, comptime option: SetOption, value: SetOptionType(option)) SetError!void {
     const Value = @TypeOf(value);
     const raw_value = switch (@typeInfo(Value)) {
         .bool => @as(c_int, @intFromBool(value)),
@@ -164,6 +171,7 @@ pub fn set(socket: Self, comptime option: SetOption, value: SetOptionType(option
             else => @compileError("Unrecognized type: " ++ @typeName(Value)),
         },
         .@"enum" => @intFromEnum(value),
+        .pointer => value,
         else => @compileError("Unrecognized type: " ++ @typeName(Value)),
     };
     const RawValue = @TypeOf(raw_value);
@@ -175,7 +183,7 @@ pub fn set(socket: Self, comptime option: SetOption, value: SetOptionType(option
     };
 
     if (zmq.zmq_setsockopt(
-        socket.handle,
+        self.handle,
         @intFromEnum(option),
         ptr,
         size,
@@ -190,4 +198,66 @@ pub fn set(socket: Self, comptime option: SetOption, value: SetOptionType(option
         zmq.EINTR => SetError.Interrupted,
         else => SetError.Unexpected,
     };
+}
+
+pub const GetError = error{
+    OptionInvalid,
+    ContextInvalid,
+    SocketInvalid,
+    Interrupted,
+    Unexpected,
+};
+pub fn get(self: Self, comptime option: GetOption, out: *GetOptionType(option)) SetError!void {
+    const Out = @TypeOf(out.*);
+    const result = result: switch (@typeInfo(Out)) {
+        .bool => {
+            var value: c_int = undefined;
+            var size: usize = @sizeOf(@TypeOf(value));
+
+            const result = zmq.zmq_getsockopt(self.handle, @intFromEnum(option), &value, &size);
+
+            if (result != -1) {
+                out.* = value != 0;
+            }
+
+            break :result result;
+        },
+        .@"struct" => |Struct| {
+            if (Struct.layout != .@"packed") {
+                @compileError("Unrecognized type: " ++ @typeName(Out));
+            }
+            var size: usize = @sizeOf(Out);
+            break :result zmq.zmq_getsockopt(self.handle, @intFromEnum(option), out, &size);
+        },
+        .@"enum" => {
+            var size: usize = @sizeOf(Out);
+            break :result zmq.zmq_getsockopt(self.handle, @intFromEnum(option), out, &size);
+        },
+        .int => {
+            var size: usize = @sizeOf(Out);
+            break :result zmq.zmq_getsockopt(self.handle, @intFromEnum(option), out, &size);
+        },
+        .pointer => |Pointer| {
+            if (Pointer.size != .slice) {
+                @compileError("Unrecognized type: " ++ @typeName(Out));
+            }
+            break :result zmq.zmq_getsockopt(
+                self.handle,
+                @intFromEnum(option),
+                out.ptr,
+                &out.len,
+            );
+        },
+        else => @compileError("Unrecognized type: " ++ @typeName(Out)),
+    };
+
+    if (result == -1) {
+        return switch (c._errno().*) {
+            zmq.EINVAL => SetError.OptionInvalid,
+            zmq.ETERM => SetError.ContextInvalid,
+            zmq.ENOTSOCK => SetError.SocketInvalid,
+            zmq.EINTR => SetError.Interrupted,
+            else => SetError.Unexpected,
+        };
+    }
 }
