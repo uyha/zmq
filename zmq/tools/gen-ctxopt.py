@@ -2,7 +2,9 @@ from urllib import request
 
 from parsel import Selector
 
+print("// Auto generated, change by updating tools/gen-ctxopt.py instead")
 print("""const zmq = @import("libzmq");""")
+print()
 
 # -------------------------------------Set Options-------------------------------------
 set_types = {
