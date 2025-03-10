@@ -369,14 +369,14 @@ pub fn OptionType(option: Option) type {
     };
 }
 
-pub const SetOptionError = error{
+pub const SetError = error{
     OptionInvalid,
     ContextInvalid,
     SocketInvalid,
     Interrupted,
     Unexpected,
 };
-pub fn set(socket: Self, comptime option: Option, value: OptionType(option)) SetOptionError!void {
+pub fn set(socket: Self, comptime option: Option, value: OptionType(option)) SetError!void {
     const Value = @TypeOf(value);
     const raw_value = switch (@typeInfo(Value)) {
         .bool => @as(c_int, @intFromBool(value)),
@@ -405,11 +405,11 @@ pub fn set(socket: Self, comptime option: Option, value: OptionType(option)) Set
     }
 
     return switch (c._errno().*) {
-        zmq.EINVAL => SetOptionError.OptionInvalid,
-        zmq.ETERM => SetOptionError.ContextInvalid,
-        zmq.ENOTSOCK => SetOptionError.SocketInvalid,
-        zmq.EINTR => SetOptionError.Interrupted,
-        else => SetOptionError.Unexpected,
+        zmq.EINVAL => SetError.OptionInvalid,
+        zmq.ETERM => SetError.ContextInvalid,
+        zmq.ENOTSOCK => SetError.SocketInvalid,
+        zmq.EINTR => SetError.Interrupted,
+        else => SetError.Unexpected,
     };
 }
 
