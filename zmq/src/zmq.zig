@@ -38,7 +38,9 @@ pub const Socket = socket.Socket;
 pub const errno = @import("errno.zig").errno;
 
 pub const poll = @import("poll.zig");
+
 pub const poller = @import("poller.zig");
+pub const Poller = poller.Poller;
 
 comptime {
     std.testing.refAllDeclsRecursive(atomic_counter);

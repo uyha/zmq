@@ -13,18 +13,17 @@ pub fn main() !void {
 
     try socket.bind("ipc:///home/uy/Personal/playground/python/hello");
 
-    var poll_items = [_]zmq.poll.Item{
-        socket.pollItem(.in),
+    var poller: *zmq.Poller = try .init();
+    try poller.add(socket, null, .in);
+
+    var events: [1]zmq.Poller.Event = .{
+        .{ .events = .in },
     };
-    if (zmq.poll.poll(&poll_items, -1)) |size| {
-        for (poll_items[0..size]) |*item| {
-            if (item.socket) |sock| {
-                std.debug.print(
-                    "{any}\n",
-                    .{sock.recvMsg(&message, .{})},
-                );
-                std.debug.print("{s}\n", .{message.slice().?});
-            }
+
+    while (poller.wait(&events[0], -1)) {
+        if (events[0].socket == socket) {
+            _ = try socket.recvMsg(&message, .{});
+            std.debug.print("{?s}\n", .{message.slice()});
         }
     } else |err| {
         std.debug.print("{}\n", .{err});
