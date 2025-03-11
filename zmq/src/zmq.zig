@@ -24,9 +24,14 @@ pub fn has(capability: Capability) bool {
     return zmq.zmq_has(std.enums.tagName(Capability, capability).?.ptr) != 0;
 }
 
-pub const Context = @import("Context.zig");
+pub const context = @import("context.zig");
+pub const Context = context.Context;
+
 pub const Message = @import("Message.zig");
-pub const Socket = @import("Socket.zig");
+
+pub const socket = @import("socket.zig");
+pub const Socket = socket.Socket;
+
 pub const errno = @import("errno.zig").errno;
 
 pub const poll = @import("poll.zig");

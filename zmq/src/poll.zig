@@ -1,7 +1,7 @@
 const zmq = @import("libzmq");
 pub const errno = @import("errno.zig").errno;
 
-const Socket = @import("Socket.zig");
+const Socket = @import("socket.zig").Socket;
 
 pub const Events = packed struct(c_short) {
     pollin: bool = false,
@@ -15,14 +15,10 @@ pub const Events = packed struct(c_short) {
     pub const inout: Events = .{ .pollin = true, .pollout = true };
 };
 pub const Item = extern struct {
-    socket: ?*anyopaque = null,
+    socket: ?*Socket = null,
     fd: zmq.zmq_fd_t = 0,
     events: Events = .{},
     revents: Events = .{},
-
-    pub fn getSocket(self: Item) ?Socket {
-        return if (self.socket) |handle| .{ .handle = handle } else null;
-    }
 };
 
 pub const PollError = error{ SocketInvalid, Interrupted, Unexpected };

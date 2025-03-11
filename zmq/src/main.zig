@@ -2,10 +2,10 @@ const zmq = @import("zmq");
 const std = @import("std");
 
 pub fn main() !void {
-    const context: zmq.Context = try .init();
+    const context: *zmq.Context = try .init();
     defer context.deinit();
 
-    const socket: zmq.Socket = try .init(context, .pull);
+    const socket: *zmq.Socket = try .init(context, .pull);
     defer socket.deinit();
 
     var message: zmq.Message = .empty();
@@ -18,7 +18,7 @@ pub fn main() !void {
     };
     if (zmq.poll.poll(&poll_items, -1)) |size| {
         for (poll_items[0..size]) |*item| {
-            if (item.getSocket()) |sock| {
+            if (item.socket) |sock| {
                 std.debug.print(
                     "{any}\n",
                     .{sock.recvMsg(&message, .{})},
