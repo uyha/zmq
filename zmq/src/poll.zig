@@ -1,19 +1,12 @@
 const zmq = @import("libzmq");
+const log = @import("std").log.warn;
+
 const errno = @import("errno.zig").errno;
+const strerror = @import("errno.zig").strerror;
 
 const Socket = @import("socket.zig").Socket;
+const Events = @import("events.zig").Events;
 
-pub const Events = packed struct(c_short) {
-    pollin: bool = false,
-    pollout: bool = false,
-    pollerr: bool = false,
-    pollpri: bool = false,
-    _padding: u12 = 0,
-
-    pub const in: Events = .{ .pollin = true };
-    pub const out: Events = .{ .pollout = true };
-    pub const inout: Events = .{ .pollin = true, .pollout = true };
-};
 pub const Item = extern struct {
     socket: ?*Socket = null,
     fd: zmq.zmq_fd_t = 0,
@@ -32,7 +25,10 @@ pub fn poll(items: []Item, timeout: c_long) PollError!usize {
             // zmq.EFAULT is skip since items cannot be null
             zmq.ETERM => PollError.SocketInvalid,
             zmq.EINTR => PollError.Interrupted,
-            else => PollError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return PollError.Unexpected;
+            },
         },
         else => |size| @intCast(size),
     };

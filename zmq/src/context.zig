@@ -1,5 +1,6 @@
 const zmq = @import("libzmq");
 const std = @import("std");
+const log = std.log.warn;
 const c = @import("std").c;
 
 const opt = @import("context/option.zig");
@@ -9,6 +10,7 @@ const GetOption = opt.GetOption;
 const GetOptionType = opt.GetOptionType;
 
 const errno = @import("errno.zig").errno;
+const strerror = @import("errno.zig").strerror;
 
 pub const Context = opaque {
     const Self = @This();
@@ -18,10 +20,13 @@ pub const Context = opaque {
         if (zmq.zmq_ctx_new()) |handle| {
             return @ptrCast(handle);
         } else {
-            return switch (errno()) {
-                zmq.EMFILE => InitError.TooManyOpenFiles,
-                else => InitError.Unexpected,
-            };
+            switch (errno()) {
+                zmq.EMFILE => return InitError.TooManyOpenFiles,
+                else => |err| {
+                    log("{s}: {s}\n", .{ @src().fn_name, strerror(err) });
+                    return InitError.Unexpected;
+                },
+            }
         }
     }
 
@@ -32,10 +37,13 @@ pub const Context = opaque {
     pub const ShutdownError = error{ ContextInvalid, Unexpected };
     pub fn shutdown(self: *Self) ShutdownError!void {
         if (zmq.zmq_ctx_shutdown(self) == -1) {
-            return switch (errno()) {
-                zmq.EFAULT => ShutdownError.ContextInvalid,
-                else => ShutdownError.Unexpected,
-            };
+            switch (errno()) {
+                zmq.EFAULT => return ShutdownError.ContextInvalid,
+                else => |err| {
+                    log("{s}: {s}\n", .{ @src().fn_name, strerror(err) });
+                    return ShutdownError.Unexpected;
+                },
+            }
         }
     }
 
@@ -67,10 +75,13 @@ pub const Context = opaque {
             ptr,
             size,
         ) == -1) {
-            return switch (errno()) {
-                zmq.EINVAL => SetError.OptionInvalid,
-                else => SetError.Unexpected,
-            };
+            switch (errno()) {
+                zmq.EINVAL => return SetError.OptionInvalid,
+                else => |err| {
+                    log("{s}: {s}\n", .{ @src().fn_name, strerror(err) });
+                    return SetError.Unexpected;
+                },
+            }
         }
     }
 
@@ -124,9 +135,12 @@ pub const Context = opaque {
         };
 
         if (result == -1) {
-            return switch (errno()) {
-                else => SetError.Unexpected,
-            };
+            switch (errno()) {
+                else => |err| {
+                    log("{s}\n", .{strerror(err)});
+                    return SetError.Unexpected;
+                },
+            }
         }
     }
 

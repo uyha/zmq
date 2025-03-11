@@ -1,9 +1,11 @@
 const zmq = @import("libzmq");
 const std = @import("std");
+const log = std.log.warn;
 const posix = std.posix;
 const c = @import("std").c;
 
 const errno = @import("errno.zig").errno;
+const strerror = @import("errno.zig").strerror;
 
 const Self = @This();
 
@@ -27,7 +29,10 @@ pub fn withSize(msgSize: usize) InitError!Self {
     if (zmq.zmq_msg_init_size(&result.message, msgSize) == -1) {
         return switch (errno()) {
             zmq.ENOMEM => InitError.OutOfMemory,
-            else => InitError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return InitError.Unexpected;
+            },
         };
     }
 
@@ -40,7 +45,10 @@ pub fn withBuffer(ptr: *const anyopaque, len: usize) InitError!Self {
     if (zmq.zmq_msg_init_buffer(&result.message, ptr, len) == -1) {
         return switch (errno()) {
             zmq.ENOMEM => InitError.OutOfMemory,
-            else => InitError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return InitError.Unexpected;
+            },
         };
     }
 
@@ -112,7 +120,10 @@ pub fn copy(self: *Self, source: *Self) CopyError!void {
     if (zmq.zmq_msg_copy(&self.message, &source.message) == -1) {
         return switch (errno()) {
             zmq.EFAULT => CopyError.MessageInvalid,
-            else => CopyError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return CopyError.Unexpected;
+            },
         };
     }
 }
@@ -122,7 +133,10 @@ pub fn move(self: *Self, source: *Self) MoveError!void {
     if (zmq.zmq_msg_move(&self.message, &source.message) == -1) {
         return switch (errno()) {
             zmq.EFAULT => MoveError.MessageInvalid,
-            else => MoveError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return MoveError.Unexpected;
+            },
         };
     }
 }
@@ -162,7 +176,10 @@ pub fn gets(self: *Self, property: [:0]const u8) GetsError![*:0]const u8 {
         result
     else switch (errno()) {
         zmq.EINVAL => GetsError.PropertyUnkown,
-        else => GetsError.Unexpected,
+        else => |err| {
+            log("{s}\n", .{strerror(err)});
+            return GetsError.Unexpected;
+        },
     };
 }
 

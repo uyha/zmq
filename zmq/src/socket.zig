@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.warn;
 const c = std.c;
 const zmq = @import("libzmq");
 
@@ -21,6 +22,7 @@ pub const Type = @import("socket/type.zig").Type;
 const poll = @import("poll.zig");
 
 const errno = @import("errno.zig").errno;
+const strerror = @import("errno.zig").strerror;
 
 pub const Socket = opaque {
     const Self = @This();
@@ -37,7 +39,10 @@ pub const Socket = opaque {
             return switch (errno()) {
                 zmq.EMFILE => InitError.TooManyOpenFiles,
                 zmq.EFAULT, zmq.ETERM => InitError.InvalidContext,
-                else => InitError.Unexpected,
+                else => |err| {
+                    log("{s}\n", .{strerror(err)});
+                    return InitError.Unexpected;
+                },
             };
         }
     }
@@ -74,7 +79,10 @@ pub const Socket = opaque {
             zmq.EPROTONOSUPPORT => ConnectError.TransportNotSupported,
             zmq.ENOCOMPATPROTO => ConnectError.TransportNotCompatible,
             zmq.EMTHREAD => ConnectError.NoThreadAvaiable,
-            else => ConnectError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return ConnectError.Unexpected;
+            },
         };
     }
 
@@ -95,7 +103,10 @@ pub const Socket = opaque {
             zmq.ETERM => DisconnectError.ContextInvalid,
             zmq.ENOTSOCK => DisconnectError.SocketInvalid,
             zmq.ENOENT => DisconnectError.EndpointNotBound,
-            else => DisconnectError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return DisconnectError.Unexpected;
+            },
         };
     }
     test "connect and disconnect" {
@@ -135,7 +146,10 @@ pub const Socket = opaque {
             zmq.ETERM => BindError.ContextInvalid,
             zmq.ENOTSOCK => BindError.SocketInvalid,
             zmq.EMTHREAD => BindError.NoThreadAvaiable,
-            else => BindError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return BindError.Unexpected;
+            },
         };
     }
 
@@ -155,7 +169,10 @@ pub const Socket = opaque {
             zmq.ETERM => UnbindError.ContextInvalid,
             zmq.ENOTSOCK => UnbindError.SocketInvalid,
             zmq.ENOENT => UnbindError.EndpointNotBound,
-            else => UnbindError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return UnbindError.Unexpected;
+            },
         };
     }
 
@@ -203,7 +220,10 @@ pub const Socket = opaque {
             zmq.EINTR => SendError.Interrupted,
             zmq.EFAULT => SendError.MessageInvalid,
             zmq.EHOSTUNREACH => SendError.CannotRoute,
-            else => SendError.Unexpected,
+            else => {
+                log("{s}\n", .{strerror(err)});
+                return SendError.Unexpected;
+            },
         };
     }
     pub fn sendMsg(self: *Self, message: *Message, flags: SendFlags) SendError!void {
@@ -262,7 +282,10 @@ pub const Socket = opaque {
             zmq.ETERM => RecvError.ContextInvalid,
             zmq.ENOTSOCK => RecvError.SocketInvalid,
             zmq.EINTR => RecvError.Interrupted,
-            else => RecvError.Unexpected,
+            else => {
+                log("{s}\n", .{strerror(err)});
+                return RecvError.Unexpected;
+            },
         };
     }
     pub fn recv(self: *Self, buffer: []u8, flags: RecvFlags) RecvError!usize {
@@ -343,7 +366,10 @@ pub const Socket = opaque {
             zmq.ETERM => SetError.ContextInvalid,
             zmq.ENOTSOCK => SetError.SocketInvalid,
             zmq.EINTR => SetError.Interrupted,
-            else => SetError.Unexpected,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return SetError.Unexpected;
+            },
         };
     }
 
@@ -404,7 +430,10 @@ pub const Socket = opaque {
                 zmq.ETERM => SetError.ContextInvalid,
                 zmq.ENOTSOCK => SetError.SocketInvalid,
                 zmq.EINTR => SetError.Interrupted,
-                else => SetError.Unexpected,
+                else => |err| {
+                    log("{s}\n", .{strerror(err)});
+                    return SetError.Unexpected;
+                },
             };
         }
     }
