@@ -51,6 +51,18 @@ pub fn deinit(self: *Self) void {
     _ = zmq.zmq_msg_close(&self.message);
 }
 
+test "init and deinit functions" {
+    var emptyMsg: Self = .empty();
+    defer emptyMsg.deinit();
+
+    var sizeMsg: Self = try .withSize(1);
+    defer sizeMsg.deinit();
+
+    const buffer: [32]u8 = undefined;
+    var bufferMsg: Self = try .withBuffer(&buffer, buffer.len);
+    defer bufferMsg.deinit();
+}
+
 pub fn data(self: *Self) ?*anyopaque {
     return zmq.zmq_msg_data(&self.message);
 }
@@ -66,8 +78,30 @@ pub fn slice(self: *Self) ?[]u8 {
     return result;
 }
 
+test "data, size, and slice" {
+    const buffer = "asdf";
+    var msg: Self = try .withBuffer(buffer, buffer.len);
+    defer msg.deinit();
+
+    try std.testing.expectEqual(buffer.len, msg.size());
+
+    var msgSlice: []const u8 = undefined;
+    msgSlice.ptr = @ptrCast(msg.data().?);
+    msgSlice.len = msg.size();
+    try std.testing.expect(std.mem.eql(u8, buffer, msgSlice));
+
+    try std.testing.expect(std.mem.eql(u8, buffer, msg.slice().?));
+}
+
 pub fn more(self: *const Self) bool {
     return zmq.zmq_msg_more(&self.message) != 0;
+}
+
+test "more" {
+    var msg: Self = .empty();
+    defer msg.deinit();
+
+    try std.testing.expect(!msg.more());
 }
 
 pub const CopyError = error{ MessageInvalid, Unexpected };
@@ -91,6 +125,17 @@ pub fn move(self: *Self, source: *Self) MoveError!void {
             else => MoveError.Unexpected,
         };
     }
+}
+
+test "copy and move" {
+    var source: Self = .empty();
+    defer source.deinit();
+
+    var dest: Self = .empty();
+    defer dest.deinit();
+
+    try source.copy(&dest);
+    try source.move(&dest);
 }
 
 pub const Property = enum(c_int) {
@@ -119,4 +164,15 @@ pub fn gets(self: *Self, property: [:0]const u8) GetsError![*:0]const u8 {
         zmq.EINVAL => GetsError.PropertyUnkown,
         else => GetsError.Unexpected,
     };
+}
+
+test "get and gets" {
+    var msg: Self = .empty();
+    defer msg.deinit();
+
+    _ = msg.get(.more);
+    _ = msg.get(.source_fd);
+    _ = msg.get(.shared);
+
+    _ = msg.gets("Socket-Type") catch {};
 }

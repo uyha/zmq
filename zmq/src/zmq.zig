@@ -35,3 +35,10 @@ pub const Socket = socket.Socket;
 pub const errno = @import("errno.zig").errno;
 
 pub const poll = @import("poll.zig");
+
+comptime {
+    std.testing.refAllDeclsRecursive(context);
+    std.testing.refAllDeclsRecursive(Message);
+    std.testing.refAllDeclsRecursive(socket);
+    std.testing.refAllDeclsRecursive(poll);
+}
