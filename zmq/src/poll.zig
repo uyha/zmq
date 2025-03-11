@@ -39,5 +39,6 @@ pub fn poll(items: []Item, timeout: c_long) PollError!usize {
 }
 
 test "poll" {
-    _ = poll(&.{}, 0) catch {};
+    var items: [1]Item = .{.{}};
+    _ = poll(&items, 0) catch {};
 }

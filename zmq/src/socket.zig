@@ -45,6 +45,14 @@ pub const Socket = opaque {
         _ = zmq.zmq_close(self);
     }
 
+    test "init and deinit" {
+        var context: *Context = try .init();
+        defer context.deinit();
+
+        var socket: *Socket = try .init(context, .pull);
+        defer socket.deinit();
+    }
+
     pub const ConnectError = error{
         EndpointInvalid,
         TransportNotSupported,
@@ -89,6 +97,16 @@ pub const Socket = opaque {
             zmq.ENOENT => DisconnectError.EndpointNotBound,
             else => DisconnectError.Unexpected,
         };
+    }
+    test "connect and disconnect" {
+        var context: *Context = try .init();
+        defer context.deinit();
+
+        var socket: *Socket = try .init(context, .pull);
+        defer socket.deinit();
+
+        socket.connect("ipc://asdf") catch {};
+        socket.disconnect("ipc://asdf") catch {};
     }
 
     pub const BindError = error{
@@ -139,6 +157,17 @@ pub const Socket = opaque {
             zmq.ENOENT => UnbindError.EndpointNotBound,
             else => UnbindError.Unexpected,
         };
+    }
+
+    test "bind and unbind" {
+        var context: *Context = try .init();
+        defer context.deinit();
+
+        var socket: *Socket = try .init(context, .pull);
+        defer socket.deinit();
+
+        socket.bind("ipc://") catch {};
+        socket.unbind("ipc://") catch {};
     }
 
     pub const SendFlags = packed struct(c_int) {
@@ -195,6 +224,20 @@ pub const Socket = opaque {
             return sendError(errno());
         }
     }
+    test "send* functions" {
+        var context: *Context = try .init();
+        defer context.deinit();
+
+        var socket: *Socket = try .init(context, .pull);
+        defer socket.deinit();
+
+        var msg: Message = .empty();
+        defer msg.deinit();
+
+        socket.sendMsg(&msg, .{}) catch {};
+        socket.sendBuffer("", 0, .{}) catch {};
+        socket.sendConst("", 0, .{}) catch {};
+    }
 
     pub const RecvFlags = packed struct(c_int) {
         dont_wait: bool = false,
@@ -241,6 +284,22 @@ pub const Socket = opaque {
             },
             else => |size| @intCast(size),
         };
+    }
+
+    test "recv* functions" {
+        var context: *Context = try .init();
+        defer context.deinit();
+
+        var socket: *Socket = try .init(context, .pull);
+        defer socket.deinit();
+
+        var buffer: [16]u8 = undefined;
+        var slice: []u8 = &buffer;
+        var msg: Message = .empty();
+        defer msg.deinit();
+
+        slice.len = socket.recv(slice, .noblock) catch 0;
+        _ = socket.recvMsg(&msg, .noblock) catch {};
     }
 
     pub const SetError = error{
