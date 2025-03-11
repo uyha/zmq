@@ -6,12 +6,12 @@ All the binding functions live in the `zmq` namespace.
 
 ### Atomic Counter
 
-- [ ] `zmq_atomic_counter_dec`
-- [ ] `zmq_atomic_counter_destroy`
-- [ ] `zmq_atomic_counter_inc`
-- [ ] `zmq_atomic_counter_new`
-- [ ] `zmq_atomic_counter_set`
-- [ ] `zmq_atomic_counter_value`
+- [X] `zmq_atomic_counter_dec` -> `AtomicCounter.dec`
+- [X] `zmq_atomic_counter_destroy` -> `AtomicCounter.deinit`
+- [X] `zmq_atomic_counter_inc` -> `AtomicCounter.inc`
+- [X] `zmq_atomic_counter_new` -> `AtomicCounter.init`
+- [X] `zmq_atomic_counter_set` -> `AtomicCounter.set`
+- [X] `zmq_atomic_counter_value` -> `AtomicCounter.value`
 
 ### Context
 

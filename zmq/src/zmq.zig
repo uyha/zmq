@@ -24,6 +24,9 @@ pub fn has(capability: Capability) bool {
     return zmq.zmq_has(std.enums.tagName(Capability, capability).?.ptr) != 0;
 }
 
+const atomic_counter = @import("atomic_counter.zig");
+pub const AtomicCounter = atomic_counter.AtomicCounter;
+
 pub const context = @import("context.zig");
 pub const Context = context.Context;
 
@@ -37,6 +40,7 @@ pub const errno = @import("errno.zig").errno;
 pub const poll = @import("poll.zig");
 
 comptime {
+    std.testing.refAllDeclsRecursive(atomic_counter);
     std.testing.refAllDeclsRecursive(context);
     std.testing.refAllDeclsRecursive(Message);
     std.testing.refAllDeclsRecursive(socket);
