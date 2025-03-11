@@ -117,4 +117,4 @@ the underlying data)
 ### Utilities
 
 - [X] `zmq_errno` -> `errno`
-- [ ] `zmq_strerror`
+- [X] `zmq_strerror` -> `strerror`
