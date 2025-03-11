@@ -39,6 +39,13 @@ pub const Context = opaque {
         }
     }
 
+    test "init, deinit, and shutdown" {
+        var context: *Self = try .init();
+        defer context.deinit();
+
+        try context.shutdown();
+    }
+
     pub const SetError = error{ OptionInvalid, Unexpected };
     pub fn set(self: *Self, comptime option: SetOption, value: SetOptionType(option)) SetError!void {
         const Value = @TypeOf(value);
@@ -101,6 +108,18 @@ pub const Context = opaque {
 
                 break :get result;
             },
+            *c_int => {
+                var size: usize = @sizeOf(Out);
+
+                const result = zmq.zmq_ctx_get_ext(
+                    self,
+                    @intFromEnum(option),
+                    out,
+                    &size,
+                );
+
+                break :get result;
+            },
             else => @compileError("Unrecognized type: " ++ @typeName(Out)),
         };
 
@@ -109,5 +128,23 @@ pub const Context = opaque {
                 else => SetError.Unexpected,
             };
         }
+    }
+
+    test "set and get" {
+        var context: *Self = try .init();
+        defer context.deinit();
+
+        context.set(.blocky, true) catch {};
+        context.set(.thread_name_prefix, "asdf") catch {};
+        context.set(.max_msgsz, 11) catch {};
+
+        var blocky: bool = undefined;
+        var buffer: [255:0]u8 = undefined;
+        var thread_name: [:0]u8 = &buffer;
+        var max_msgs: c_int = undefined;
+
+        context.get(.blocky, &blocky) catch {};
+        context.get(.thread_name_prefix, &thread_name) catch {};
+        context.get(.max_msgsz, &max_msgs) catch {};
     }
 };
