@@ -1,5 +1,5 @@
 const zmq = @import("libzmq");
-pub const errno = @import("errno.zig").errno;
+const errno = @import("errno.zig").errno;
 
 const Socket = @import("socket.zig").Socket;
 
