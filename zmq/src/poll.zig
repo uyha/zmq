@@ -37,3 +37,7 @@ pub fn poll(items: []Item, timeout: c_long) PollError!usize {
         else => |size| @intCast(size),
     };
 }
+
+test "poll" {
+    _ = poll(&.{}, 0) catch {};
+}
