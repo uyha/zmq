@@ -75,18 +75,18 @@ the underlying data)
 
 ### Poller
 
-- [ ] `zmq_poller_new`
-- [ ] `zmq_poller_destroy`
-- [ ] `zmq_poller_size`
-- [ ] `zmq_poller_add`
-- [ ] `zmq_poller_modify`
-- [ ] `zmq_poller_remove`
-- [ ] `zmq_poller_add_fd`
-- [ ] `zmq_poller_modify_fd`
-- [ ] `zmq_poller_remove_fd`
-- [ ] `zmq_poller_wait`
-- [ ] `zmq_poller_wait_all`
-- [ ] `zmq_poller_fd`
+- [X] `zmq_poller_new` -> `Poller.init`
+- [X] `zmq_poller_destroy` -> `Poller.deinit`
+- [X] `zmq_poller_size` -> `Poller.size`
+- [X] `zmq_poller_add` -> `Poller.add`
+- [X] `zmq_poller_modify` -> `Poller.modify`
+- [X] `zmq_poller_remove` -> `Poller.remove`
+- [X] `zmq_poller_add_fd` -> `Poller.add_fd`
+- [X] `zmq_poller_modify_fd` -> `Poller.modify_fd`
+- [X] `zmq_poller_remove_fd` -> `Poller.remove_fd`
+- [X] `zmq_poller_wait` -> `Poller.wait`
+- [X] `zmq_poller_wait_all` -> `Poller.wait_all`
+- [X] `zmq_poller_fd` -> `Poller.fd`
 
 ### Proxy
 
