@@ -120,7 +120,7 @@ pub const Context = opaque {
                 break :get result;
             },
             *c_int => {
-                var size: usize = @sizeOf(Out);
+                var size: usize = @sizeOf(@TypeOf(out.*));
 
                 const result = zmq.zmq_ctx_get_ext(
                     self,
