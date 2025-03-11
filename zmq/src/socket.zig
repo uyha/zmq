@@ -349,11 +349,4 @@ pub const Socket = opaque {
             };
         }
     }
-
-    pub fn pollItem(self: *Self, events: poll.Events) poll.Item {
-        return .{
-            .socket = self,
-            .events = @bitCast(events),
-        };
-    }
 };
