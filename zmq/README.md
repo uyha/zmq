@@ -104,7 +104,7 @@ the underlying data)
 - [ ] `zmq_timers_timeout`
 - [ ] `zmq_timers_execute`
 
-### Z885
+### Z85
 
 - [ ] `zmq_z85_decode`
 - [ ] `zmq_z85_encode`
