@@ -18,6 +18,8 @@ pub const PrincipalNameType = opt.PrincipalNameType;
 
 pub const Type = @import("socket/type.zig").Type;
 
+const poll = @import("poll.zig");
+
 const errno = @import("errno.zig").errno;
 
 const Self = @This();
@@ -349,4 +351,11 @@ pub fn get(self: Self, comptime option: GetOption, out: *GetOptionType(option)) 
             else => SetError.Unexpected,
         };
     }
+}
+
+pub fn pollItem(self: Self, events: poll.Events) poll.Item {
+    return .{
+        .socket = self.handle,
+        .events = @bitCast(events),
+    };
 }
