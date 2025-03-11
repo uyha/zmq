@@ -142,7 +142,7 @@ pub fn unbind(socket: Self, endpoint: [:0]const u8) UnbindError!void {
     };
 }
 
-const SendFlags = packed struct(c_int) {
+pub const SendFlags = packed struct(c_int) {
     dont_wait: bool = false,
     send_more: bool = false,
     _padding: u30 = 0,
@@ -151,9 +151,9 @@ const SendFlags = packed struct(c_int) {
     pub const more: SendFlags = .{ .send_more = true };
     pub const morenoblock: SendFlags = .{ .dont_wait = true, .send_more = true };
 };
-const SendError = error{
+pub const SendError = error{
     WouldBlock,
-    SendMsgNotSupported,
+    SendNotSupported,
     MultipartNotSupported,
     InappropriateStateActionFailed,
     ContextInvalid,
@@ -164,10 +164,10 @@ const SendError = error{
     Unexpected,
 };
 
-fn sendError() SendError {
-    return switch (errno()) {
+fn sendError(err: c_int) SendError {
+    return switch (err) {
         zmq.EAGAIN => SendError.WouldBlock,
-        zmq.ENOTSUP => SendError.SendMsgNotSupported,
+        zmq.ENOTSUP => SendError.SendNotSupported,
         zmq.EINVAL => SendError.MultipartNotSupported,
         zmq.EFSM => SendError.InappropriateStateActionFailed,
         zmq.ETERM => SendError.ContextInvalid,
@@ -181,20 +181,67 @@ fn sendError() SendError {
 pub fn sendMsg(self: Self, message: *Message, flags: SendFlags) SendError!void {
     const result = zmq.zmq_msg_send(&message.message, self.handle, @bitCast(flags));
     if (result == -1) {
-        return sendError();
+        return sendError(errno());
     }
 }
 pub fn sendBuffer(self: Self, ptr: *const anyopaque, len: usize, flags: SendFlags) SendError!void {
     const result = zmq.zmq_send(self.handle, ptr, len, @bitCast(flags));
     if (result == -1) {
-        return sendError();
+        return sendError(errno());
     }
 }
 pub fn sendConst(self: Self, ptr: *const anyopaque, len: usize, flags: SendFlags) SendError!void {
     const result = zmq.zmq_send_const(self.handle, ptr, len, @bitCast(flags));
     if (result == -1) {
-        return sendError();
+        return sendError(errno());
     }
+}
+
+pub const RecvFlags = packed struct(c_int) {
+    dont_wait: bool = false,
+    _padding: u31 = 0,
+
+    pub const noblock: RecvFlags = .{ .dont_wait = true };
+};
+pub const RecvError = error{
+    WouldBlock,
+    RecvNotSupported,
+    InappropriateStateActionFailed,
+    ContextInvalid,
+    SocketInvalid,
+    Interrupted,
+    Unexpected,
+};
+fn recvError(err: c_int) RecvError {
+    return switch (err) {
+        zmq.EAGAIN => RecvError.WouldBlock,
+        zmq.ENOTSUP => RecvError.RecvNotSupported,
+        zmq.EFSM => RecvError.InappropriateStateActionFailed,
+        zmq.ETERM => RecvError.ContextInvalid,
+        zmq.ENOTSOCK => RecvError.SocketInvalid,
+        zmq.EINTR => RecvError.Interrupted,
+        else => RecvError.Unexpected,
+    };
+}
+pub fn recv(self: Self, buffer: []u8, flags: RecvFlags) RecvError!usize {
+    return switch (zmq.zmq_recv(self.handle, buffer.ptr, buffer.len, @bitCast(flags))) {
+        -1 => recvError(errno()),
+        else => |size| @intCast(size),
+    };
+}
+
+pub const RecvMsgError = RecvError || error{MessageInvalid};
+pub fn recvMsg(self: Self, msg: *Message, flags: RecvFlags) RecvMsgError!usize {
+    return result: switch (zmq.zmq_recvmsg(self.handle, &msg.message, @bitCast(flags))) {
+        -1 => {
+            const err = errno();
+            break :result switch (err) {
+                zmq.EFAULT => RecvMsgError.MessageInvalid,
+                else => recvError(err),
+            };
+        },
+        else => |size| @intCast(size),
+    };
 }
 
 pub const SetError = error{

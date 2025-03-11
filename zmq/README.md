@@ -31,9 +31,9 @@ All the binding functions live in the `zmq` namespace.
 - [ ] `zmq_connect_peer`
 - [X] `zmq_disconnect` -> `Socket.disconnect`
 - [X] `zmq_getsockopt` -> `Socket.get`
-- [ ] `zmq_recv`
+- [X] `zmq_recv` -> `Socket.recv`
 - [ ] ~~`zmq_recvmsg`~~ (to be deprecated, `zmq_msg_recv` is used instead)
-- [ ] `zmq_msg_recv`
+- [X] `zmq_msg_recv` -> `Socket.recvMsg`
 - [X] `zmq_send` -> `Socket.sendBuffer`
 - [X] `zmq_send_const` -> `Socket.sendConst`
 - [ ] ~~`zmq_sendmsg`~~ (to be deprecated, `zmq_msg_send` is used instead)
@@ -47,16 +47,17 @@ All the binding functions live in the `zmq` namespace.
 ### Message
 
 - [X] `zmq_msg_close` -> `Message.deinit`
-- [ ] `zmq_msg_copy`
-- [X] `zmq_msg_data` -> `Message.data`
-- [ ] `zmq_msg_get`
-- [ ] `zmq_msg_gets`
+- [X] `zmq_msg_copy` -> `Message.copy`
+- [X] `zmq_msg_data` -> `Message.data` (`Message.slice` provides better access to
+the underlying data)
+- [X] `zmq_msg_get` -> `Message.get`
+- [X] `zmq_msg_gets` -> `Message.gets`
 - [X] `zmq_msg_init` -> `Message.empty`
 - [X] `zmq_msg_init_buffer` -> `Message.withBuffer`
 - [ ] `zmq_msg_init_data`
 - [X] `zmq_msg_init_size` -> `Message.withSize`
 - [X] `zmq_msg_more` -> `Message.more`
-- [ ] `zmq_msg_move`
+- [X] `zmq_msg_move` -> `Message.move`
 - [ ] `zmq_msg_routing_id`
 - [ ] `zmq_msg_set` (currently useless)
 - [ ] `zmq_msg_set_routing_id`
