@@ -79,11 +79,9 @@ pub fn size(self: *const Self) usize {
     return zmq.zmq_msg_size(&self.message);
 }
 
-pub fn slice(self: *Self) ?[]u8 {
-    var result: []u8 = undefined;
-    result.ptr = @ptrCast(self.data() orelse return null);
-    result.len = self.size();
-    return result;
+pub fn slice(self: *Self) ?[]const u8 {
+    const ptr = self.data() orelse return null;
+    return @as([*]const u8, @ptrCast(ptr))[0..self.size()];
 }
 
 test "data, size, and slice" {

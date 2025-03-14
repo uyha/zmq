@@ -6,16 +6,15 @@ pub fn errno() c_int {
 }
 
 pub fn strerror(err: c_int) [:0]const u8 {
-    var result: [:0]const u8 = undefined;
-    result.ptr = zmq.zmq_strerror(err);
-    result.len = 0;
-    while (result[result.len] != 0) {
-        result.len += 1;
+    const ptr: [*:0]const u8 = zmq.zmq_strerror(err);
+    var len: usize = 0;
+    while (ptr[len] != 0) {
+        len += 1;
     }
 
-    return result;
+    return ptr[0..len :0];
 }
 
 test "strerror" {
-    _ = strerror(1);
+    try std.testing.expect(std.mem.eql(u8, strerror(1), "Operation not permitted"));
 }
