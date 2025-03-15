@@ -40,8 +40,9 @@ All the binding functions live in the `zmq` namespace.
 - [X] `zmq_msg_send` -> `Socket.sendMsg`
 - [X] `zmq_setsockopt` -> `Socket.set`
 - [X] `zmq_socket` -> `Socket.init`
-- [ ] `zmq_socket_monitor`
-- [ ] `zmq_socket_monitor_versioned`
+- [X] `zmq_socket_monitor` -> `Socket.monitor`
+- [X] `zmq_socket_monitor_versioned` -> `Socket.monitorVersioned`
+- [X] `zmq_socket_monitor_pipes_stats` -> `Socket.pipesStats`
 - [X] `zmq_unbind` -> `Socket.unbind`
 
 ### Message

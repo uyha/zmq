@@ -50,14 +50,6 @@ pub const Socket = opaque {
         _ = zmq.zmq_close(self);
     }
 
-    test "init and deinit" {
-        var context: *Context = try .init();
-        defer context.deinit();
-
-        var socket: *Socket = try .init(context, .pull);
-        defer socket.deinit();
-    }
-
     pub const ConnectError = error{
         EndpointInvalid,
         TransportNotSupported,
@@ -130,17 +122,6 @@ pub const Socket = opaque {
             },
         };
     }
-    test "connect and disconnect" {
-        var context: *Context = try .init();
-        defer context.deinit();
-
-        var socket: *Socket = try .init(context, .pull);
-        defer socket.deinit();
-
-        socket.connect("ipc://asdf") catch {};
-        socket.connectPeer("ipc://asdf") catch {};
-        socket.disconnect("ipc://asdf") catch {};
-    }
 
     pub const BindError = error{
         EndpointInvalid,
@@ -196,17 +177,6 @@ pub const Socket = opaque {
                 return UnbindError.Unexpected;
             },
         };
-    }
-
-    test "bind and unbind" {
-        var context: *Context = try .init();
-        defer context.deinit();
-
-        var socket: *Socket = try .init(context, .pull);
-        defer socket.deinit();
-
-        socket.bind("ipc://") catch {};
-        socket.unbind("ipc://") catch {};
     }
 
     pub const SendFlags = packed struct(c_int) {
@@ -266,20 +236,6 @@ pub const Socket = opaque {
             return sendError(errno());
         }
     }
-    test "send* functions" {
-        var context: *Context = try .init();
-        defer context.deinit();
-
-        var socket: *Socket = try .init(context, .pull);
-        defer socket.deinit();
-
-        var msg: Message = .empty();
-        defer msg.deinit();
-
-        socket.sendMsg(&msg, .{}) catch {};
-        socket.sendBuffer("", 0, .{}) catch {};
-        socket.sendConst("", 0, .{}) catch {};
-    }
 
     pub const RecvFlags = packed struct(c_int) {
         dont_wait: bool = false,
@@ -329,22 +285,6 @@ pub const Socket = opaque {
             },
             else => |size| @intCast(size),
         };
-    }
-
-    test "recv* functions" {
-        var context: *Context = try .init();
-        defer context.deinit();
-
-        var socket: *Socket = try .init(context, .pull);
-        defer socket.deinit();
-
-        var buffer: [16]u8 = undefined;
-        var slice: []u8 = &buffer;
-        var msg: Message = .empty();
-        defer msg.deinit();
-
-        slice.len = socket.recv(slice, .noblock) catch 0;
-        _ = socket.recvMsg(&msg, .noblock) catch {};
     }
 
     pub const SetError = error{
@@ -459,4 +399,209 @@ pub const Socket = opaque {
             };
         }
     }
+
+    pub fn MonitorVersionedEvent(version: EventVersion) type {
+        return switch (version) {
+            .v1 => packed struct(c_int) {
+                connected: bool = false, // 0x00001
+                connect_delayed: bool = false, // 0x00002
+                connect_retried: bool = false, // 0x00004
+                listening: bool = false, // 0x00008
+                bind_failed: bool = false, // 0x00010
+                accepted: bool = false, // 0x00020
+                accept_failed: bool = false, // 0x00040
+                closed: bool = false, // 0x00080
+                close_failed: bool = false, // 0x00100
+                disconnected: bool = false, // 0x00200
+                monitor_stopped: bool = false, // 0x00400
+                handshake_failed_no_detail: bool = false, // 0x00800
+                handshake_succeeded: bool = false, // 0x01000
+                handshake_failed_protocol: bool = false, // 0x02000
+                handshake_failed_auth: bool = false, // 0x04000
+                _padding: u17 = 0,
+            },
+            .v2 => packed struct(u64) {
+                connected: bool = false, // 0x00001
+                connect_delayed: bool = false, // 0x00002
+                connect_retried: bool = false, // 0x00004
+                listening: bool = false, // 0x00008
+                bind_failed: bool = false, // 0x00010
+                accepted: bool = false, // 0x00020
+                accept_failed: bool = false, // 0x00040
+                closed: bool = false, // 0x00080
+                close_failed: bool = false, // 0x00100
+                disconnected: bool = false, // 0x00200
+                monitor_stopped: bool = false, // 0x00400
+                handshake_failed_no_detail: bool = false, // 0x00800
+                handshake_succeeded: bool = false, // 0x01000
+                handshake_failed_protocol: bool = false, // 0x02000
+                handshake_failed_auth: bool = false, // 0x04000
+                _padding_1: u1 = 0, // 0x08000
+                pipes_stats: bool = false, // 0x10000
+                _padding_2: u47 = 0,
+            },
+        };
+    }
+    pub const MonitorError = error{
+        ContextInvalid,
+        /// Only "inproc" transport can be used for monitoring
+        ProtocolNotSupported,
+        EndpointInvalid,
+        AddressInUse,
+        Unexpected,
+    };
+    pub fn monitor(
+        self: *Self,
+        endpoint: [:0]const u8,
+        event: MonitorVersionedEvent(.v1),
+    ) MonitorError!void {
+        return switch (zmq.zmq_socket_monitor(self, endpoint.ptr, @bitCast(event))) {
+            -1 => switch (errno()) {
+                zmq.ETERM => MonitorError.ContextInvalid,
+                zmq.EPROTONOSUPPORT => MonitorError.ProtocolNotSupported,
+                zmq.EINVAL => MonitorError.EndpointInvalid,
+                zmq.EADDRINUSE => MonitorError.AddressInUse,
+                else => |err| {
+                    log("{s}\n", .{strerror(err)});
+                    return MonitorError.Unexpected;
+                },
+            },
+            else => {},
+        };
+    }
+
+    pub const EventVersion = enum(c_int) { v1 = 1, v2 = 2 };
+    pub const MonitorType = enum(c_int) {
+        pair = zmq.ZMQ_PAIR,
+        @"pub" = zmq.ZMQ_PUB,
+        push = zmq.ZMQ_PUSH,
+    };
+    pub fn monitorVersioned(
+        self: *Self,
+        comptime version: EventVersion,
+        endpoint: [:0]const u8,
+        event: MonitorVersionedEvent(version),
+        monitor_type: MonitorType,
+    ) MonitorError!void {
+        return switch (zmq.zmq_socket_monitor_versioned(
+            self,
+            endpoint.ptr,
+            @bitCast(event),
+            @intFromEnum(version),
+            @intFromEnum(monitor_type),
+        )) {
+            -1 => switch (errno()) {
+                zmq.ETERM => MonitorError.ContextInvalid,
+                zmq.EPROTONOSUPPORT => MonitorError.ProtocolNotSupported,
+                zmq.EINVAL => MonitorError.EndpointInvalid,
+                zmq.EADDRINUSE => MonitorError.AddressInUse,
+                else => |err| {
+                    log("{s}\n", .{strerror(err)});
+                    return MonitorError.Unexpected;
+                },
+            },
+            else => {},
+        };
+    }
+
+    pub const PipesStatsError = error{
+        SocketInvalid,
+        MonitorNotEnabled,
+        NoConnection,
+        Unexpected,
+    };
+    pub fn pipesStats(self: *Self) PipesStatsError!void {
+        return switch (zmq.zmq_socket_monitor_pipes_stats(self)) {
+            -1 => switch (errno()) {
+                zmq.ENOTSOCK => PipesStatsError.SocketInvalid,
+                zmq.EINVAL => PipesStatsError.MonitorNotEnabled,
+                zmq.EAGAIN => PipesStatsError.NoConnection,
+                else => |err| {
+                    log("{s}\n", .{strerror(err)});
+                    return PipesStatsError.Unexpected;
+                },
+            },
+            else => {},
+        };
+    }
 };
+
+test "init and deinit" {
+    var context: *Context = try .init();
+    defer context.deinit();
+
+    var socket: *Socket = try .init(context, .pull);
+    defer socket.deinit();
+}
+test "connect and disconnect" {
+    var context: *Context = try .init();
+    defer context.deinit();
+
+    var socket: *Socket = try .init(context, .pull);
+    defer socket.deinit();
+
+    socket.connect("ipc://asdf") catch {};
+    socket.connectPeer("ipc://asdf") catch {};
+    socket.disconnect("ipc://asdf") catch {};
+}
+test "bind and unbind" {
+    var context: *Context = try .init();
+    defer context.deinit();
+
+    var socket: *Socket = try .init(context, .pull);
+    defer socket.deinit();
+
+    socket.bind("ipc://") catch {};
+    socket.unbind("ipc://") catch {};
+}
+test "send* functions" {
+    var context: *Context = try .init();
+    defer context.deinit();
+
+    var socket: *Socket = try .init(context, .pull);
+    defer socket.deinit();
+
+    var msg: Message = .empty();
+    defer msg.deinit();
+
+    socket.sendMsg(&msg, .{}) catch {};
+    socket.sendBuffer("", 0, .{}) catch {};
+    socket.sendConst("", 0, .{}) catch {};
+}
+test "recv* functions" {
+    var context: *Context = try .init();
+    defer context.deinit();
+
+    var socket: *Socket = try .init(context, .pull);
+    defer socket.deinit();
+
+    var buffer: [16]u8 = undefined;
+    var slice: []u8 = &buffer;
+    var msg: Message = .empty();
+    defer msg.deinit();
+
+    slice.len = socket.recv(slice, .noblock) catch 0;
+    _ = socket.recvMsg(&msg, .noblock) catch {};
+}
+test "monitor" {
+    const t = std.testing;
+
+    var context: *Context = try .init();
+    defer context.deinit();
+
+    var socket: *Socket = try .init(context, .pull);
+    defer socket.deinit();
+
+    try t.expectEqual({}, socket.monitor("inproc://#1", .{}));
+    try t.expectEqual(Socket.MonitorError.EndpointInvalid, socket.monitor("", .{}));
+    try t.expectEqual(Socket.MonitorError.ProtocolNotSupported, socket.monitor("tpc://asdf", .{}));
+
+    // The following test is unstable due to ZeroMQ can be slow in creating and binding
+    // the socket, it should return a AddressInUse error
+    _ = socket.monitorVersioned(.v2, "inproc://#1", .{}, .pair) catch {};
+    try t.expectEqual(Socket.MonitorError.EndpointInvalid, socket.monitor("", .{}));
+    try t.expectEqual(Socket.MonitorError.ProtocolNotSupported, socket.monitor("tpc://asdf", .{}));
+    try socket.monitorVersioned(.v2, "inproc://#2", .{}, .pair);
+
+    socket.pipesStats() catch {};
+}
