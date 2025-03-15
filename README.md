@@ -90,8 +90,8 @@ the underlying data)
 
 ### Proxy
 
-- [ ] `zmq_proxy`
-- [ ] `zmq_proxy_steerable`
+- [x] `zmq_proxy` -> `proxy`
+- [x] `zmq_proxy_steerable` -> `proxySteerable`
 
 ### Timer
 

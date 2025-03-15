@@ -2,28 +2,6 @@ const zmq = @import("libzmq");
 const std = @import("std");
 const c = @import("std").c;
 
-pub const Version = struct {
-    major: c_int,
-    minor: c_int,
-    patch: c_int,
-};
-pub fn version() Version {
-    var result: Version = undefined;
-
-    zmq.zmq_version(
-        &result.major,
-        &result.minor,
-        &result.patch,
-    );
-
-    return result;
-}
-
-pub const Capability = enum { ipc, pgm, tipc, norm, curve, gssapi, draft };
-pub fn has(capability: Capability) bool {
-    return zmq.zmq_has(std.enums.tagName(Capability, capability).?.ptr) != 0;
-}
-
 const atomic_counter = @import("atomic_counter.zig");
 pub const AtomicCounter = atomic_counter.AtomicCounter;
 
@@ -46,6 +24,51 @@ pub const timers = @import("timers.zig");
 pub const Timers = timers.Timers;
 
 pub const z85 = @import("z85.zig");
+
+pub const Version = struct {
+    major: c_int,
+    minor: c_int,
+    patch: c_int,
+};
+pub fn version() Version {
+    var result: Version = undefined;
+
+    zmq.zmq_version(
+        &result.major,
+        &result.minor,
+        &result.patch,
+    );
+
+    return result;
+}
+
+pub const Capability = enum { ipc, pgm, tipc, norm, curve, gssapi, draft };
+pub fn has(capability: Capability) bool {
+    return zmq.zmq_has(std.enums.tagName(Capability, capability).?.ptr) != 0;
+}
+
+pub const ProxyError = error{ ContextInvalid, SocketInvalid, Interrupted, Unexpected };
+pub fn proxy(frontend: *Socket, backend: *Socket, capture: ?*Socket) ProxyError!void {
+    if (zmq.zmq_proxy(frontend, backend, capture) == -1) {
+        return switch (errno()) {
+            zmq.ETERM => ProxyError.ContextInvalid,
+            zmq.EINTR => ProxyError.Interrupted,
+            zmq.EFAULT => ProxyError.SocketInvalid,
+            else => ProxyError.Unexpected,
+        };
+    }
+}
+
+pub fn proxySteerable(frontend: *Socket, backend: *Socket, capture: ?*Socket, control: ?*Socket) ProxyError!void {
+    if (zmq.zmq_proxy_steerable(frontend, backend, capture, control) == -1) {
+        return switch (errno()) {
+            zmq.ETERM => ProxyError.ContextInvalid,
+            zmq.EINTR => ProxyError.Interrupted,
+            zmq.EFAULT => ProxyError.SocketInvalid,
+            else => ProxyError.Unexpected,
+        };
+    }
+}
 
 comptime {
     std.testing.refAllDeclsRecursive(atomic_counter);
