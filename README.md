@@ -54,7 +54,7 @@ the underlying data)
 - [X] `zmq_msg_gets` -> `Message.gets`
 - [X] `zmq_msg_init` -> `Message.empty`
 - [X] `zmq_msg_init_buffer` -> `Message.withBuffer`
-- [ ] `zmq_msg_init_data`
+- [X] `zmq_msg_init_data` -> `Message.withData`
 - [X] `zmq_msg_init_size` -> `Message.withSize`
 - [X] `zmq_msg_more` -> `Message.more`
 - [X] `zmq_msg_move` -> `Message.move`

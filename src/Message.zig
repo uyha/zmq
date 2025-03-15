@@ -55,6 +55,24 @@ pub fn withBuffer(ptr: *const anyopaque, len: usize) InitError!Self {
     return result;
 }
 
+pub const FreeFn = fn (data: ?*anyopaque, hint: ?*anyopaque) callconv(.c) void;
+pub fn withData(ptr: *anyopaque, len: usize, free_fn: *const FreeFn, hint: ?*anyopaque) InitError!Self {
+    var result = Self{ .message = undefined };
+
+    return switch (zmq.zmq_msg_init_data(&result.message, ptr, len, free_fn, hint)) {
+        -1 => {
+            return switch (errno()) {
+                zmq.ENOMEM => InitError.OutOfMemory,
+                else => |err| {
+                    log("{s}\n", .{strerror(err)});
+                    return InitError.Unexpected;
+                },
+            };
+        },
+        else => result,
+    };
+}
+
 pub fn deinit(self: *Self) void {
     _ = zmq.zmq_msg_close(&self.message);
 }
@@ -69,6 +87,27 @@ test "init and deinit functions" {
     const buffer: [32]u8 = undefined;
     var bufferMsg: Self = try .withBuffer(&buffer, buffer.len);
     defer bufferMsg.deinit();
+
+    const free = struct {
+        pub fn free(data_ptr: ?*anyopaque, hint: ?*anyopaque) callconv(.c) void {
+            if (data_ptr) |ptr| {
+                const allocator: *std.mem.Allocator = @alignCast(@ptrCast(hint));
+                const actual_data: *std.ArrayListUnmanaged(u8) = @alignCast(@ptrCast(ptr));
+                actual_data.deinit(allocator.*);
+            }
+        }
+    }.free;
+    const allocator = std.testing.allocator;
+
+    var selfManagedData = try std.ArrayListUnmanaged(u8).initCapacity(allocator, 16);
+    try selfManagedData.resize(allocator, 16);
+    var dataMsg: Self = try .withData(
+        &selfManagedData,
+        @sizeOf(@TypeOf(selfManagedData)),
+        &free,
+        @constCast(&allocator),
+    );
+    defer dataMsg.deinit();
 }
 
 pub fn data(self: *Self) ?*anyopaque {
