@@ -95,14 +95,14 @@ the underlying data)
 
 ### Timer
 
-- [ ] `zmq_timers_new`
-- [ ] `zmq_timers_destroy`
-- [ ] `zmq_timers_add`
-- [ ] `zmq_timers_cancel`
-- [ ] `zmq_timers_set_interval`
-- [ ] `zmq_timers_reset`
-- [ ] `zmq_timers_timeout`
-- [ ] `zmq_timers_execute`
+- [X] `zmq_timers_new` -> `Timers.init`
+- [X] `zmq_timers_destroy` -> `Timers.deinit`
+- [X] `zmq_timers_add` -> `Timers.add`
+- [X] `zmq_timers_cancel` -> `Timers.cancel`
+- [X] `zmq_timers_set_interval` -> `Timers.setInterval`
+- [X] `zmq_timers_reset` -> `Timers.reset`
+- [X] `zmq_timers_timeout` -> `Timers.timeout`
+- [X] `zmq_timers_execute` -> `Timers.execute`
 
 ### Z85
 

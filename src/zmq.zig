@@ -30,17 +30,20 @@ pub const AtomicCounter = atomic_counter.AtomicCounter;
 pub const context = @import("context.zig");
 pub const Context = context.Context;
 
-pub const Message = @import("Message.zig");
-
-pub const socket = @import("socket.zig");
-pub const Socket = socket.Socket;
-
 pub const errno = @import("errno.zig").errno;
+
+pub const Message = @import("Message.zig");
 
 pub const poll = @import("poll.zig");
 
 pub const poller = @import("poller.zig");
 pub const Poller = poller.Poller;
+
+pub const socket = @import("socket.zig");
+pub const Socket = socket.Socket;
+
+pub const timers = @import("timers.zig");
+pub const Timers = timers.Timers;
 
 pub const z85 = @import("z85.zig");
 
@@ -48,8 +51,9 @@ comptime {
     std.testing.refAllDeclsRecursive(atomic_counter);
     std.testing.refAllDeclsRecursive(context);
     std.testing.refAllDeclsRecursive(Message);
-    std.testing.refAllDeclsRecursive(socket);
     std.testing.refAllDeclsRecursive(poll);
     std.testing.refAllDeclsRecursive(poller);
+    std.testing.refAllDeclsRecursive(socket);
+    std.testing.refAllDeclsRecursive(timers);
     std.testing.refAllDeclsRecursive(z85);
 }
