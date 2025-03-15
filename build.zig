@@ -22,7 +22,15 @@ fn addPlatformValues(
     }
 
     switch (target.result.os.tag) {
-        .linux => config_header.addValues(linux_values),
+        .linux => {
+            config_header.addValues(linux_values);
+            if (target.result.isGnuLibC()) {
+                config_header.addValues(gnu_libc_values);
+            }
+            if (target.result.isMuslLibC()) {
+                config_header.addValues(musl_libc_values);
+            }
+        },
         else => {},
     }
 }
@@ -34,11 +42,23 @@ fn buildLibzmq(
     options: Options,
 ) *std.Build.Step.Compile {
     const upstream = b.dependency("libzmq", .{});
+
     var platform = b.addConfigHeader(.{
         .style = .{ .cmake = upstream.path("builds/cmake/platform.hpp.in") },
         .include_path = "platform.hpp",
     }, .{});
-
+    // TODO: Support all the platforms that ZeroMQ supports
+    switch (target.result.os.tag) {
+        .linux => {},
+        else => |tag| {
+            const not_supported = b.addFail(std.fmt.allocPrint(
+                b.allocator,
+                "{s} is not supported",
+                .{@tagName(tag)},
+            ) catch @panic("OOM"));
+            platform.step.dependOn(&not_supported.step);
+        },
+    }
     addPlatformValues(platform, target, options);
 
     const library = b.addStaticLibrary(.{
@@ -61,18 +81,6 @@ fn buildLibzmq(
         .files = &zmq_source_files,
     });
 
-    // TODO: Support all the platforms that ZeroMQ supports
-    switch (target.result.os.tag) {
-        .linux => {},
-        else => |tag| {
-            const not_supported = b.addFail(std.fmt.allocPrint(
-                b.allocator,
-                "{s} is not supported",
-                .{@tagName(tag)},
-            ) catch @panic("OOM"));
-            library.step.dependOn(&not_supported.step);
-        },
-    }
     return library;
 }
 
@@ -353,8 +361,6 @@ const linux_values = .{
     .HAVE_ACCEPT4 = {},
     // `strnlen` exists in `string.h`
     .HAVE_STRNLEN = {},
-    // `strlcpy` does not exit in `string.h`
-    .ZMQ_HAVE_STRLCPY = null,
 
     // Linux does indeed have IPC and `struct sockaddr_un`
     .ZMQ_HAVE_IPC = {},
@@ -378,4 +384,12 @@ const linux_values = .{
 
     // `if_nametoindex` exits in `net/if.h`
     .HAVE_IF_NAMETOINDEX = {},
+};
+const gnu_libc_values = .{
+    // `strlcpy` does not exit in `string.h`
+    .ZMQ_HAVE_STRLCPY = null,
+};
+const musl_libc_values = .{
+    // `strlcpy` exits in `string.h`
+    .ZMQ_HAVE_STRLCPY = {},
 };
