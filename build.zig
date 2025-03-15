@@ -39,6 +39,7 @@ fn buildLibzmq(
     b: *Build,
     target: Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    strip: bool,
     options: Options,
 ) *std.Build.Step.Compile {
     const upstream = b.dependency("libzmq", .{});
@@ -65,6 +66,7 @@ fn buildLibzmq(
         .name = "libzmq",
         .target = target,
         .optimize = optimize,
+        .strip = strip,
     });
     library.linkLibC();
     library.linkLibCpp();
@@ -100,6 +102,11 @@ pub fn build(b: *std.Build) void {
         "use-radix-tree",
         "Use radix tree implementation to manage subscriptions",
     ) orelse draft;
+    const strip = b.option(
+        bool,
+        "strip",
+        "Omit debug symbols",
+    ) orelse (optimize != .Debug);
 
     const options: Options = .{
         .poller = poller,
@@ -111,6 +118,7 @@ pub fn build(b: *std.Build) void {
         b,
         target,
         optimize,
+        strip,
         options,
     );
 
@@ -132,6 +140,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/zmq.zig"),
             .target = target,
             .optimize = optimize,
+            .strip = strip,
         },
     );
     zmq.addImport("libzmq", libzmq_module);
@@ -152,6 +161,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .strip = strip,
     });
     b.installArtifact(main);
     main.root_module.addImport("zmq", zmq);
