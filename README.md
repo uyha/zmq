@@ -58,9 +58,9 @@ the underlying data)
 - [X] `zmq_msg_init_size` -> `Message.withSize`
 - [X] `zmq_msg_more` -> `Message.more`
 - [X] `zmq_msg_move` -> `Message.move`
-- [ ] `zmq_msg_routing_id`
+- [X] `zmq_msg_routing_id` -> `Message.getRoutingId`
 - [ ] `zmq_msg_set` (currently useless)
-- [ ] `zmq_msg_set_routing_id`
+- [X] `zmq_msg_set_routing_id` -> `Message.setRoutingId`
 - [X] `zmq_msg_size` -> `Message.size`
 
 ### Curve

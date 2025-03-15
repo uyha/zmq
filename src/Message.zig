@@ -191,3 +191,34 @@ test "get and gets" {
 
     _ = msg.gets("Socket-Type") catch {};
 }
+
+pub const SetRoutingIdError = error{
+    /// Routing id is not allow to be zero
+    ZeroRoutingId,
+    Unexpected,
+};
+pub fn setRoutingId(self: *Self, routing_id: u32) SetRoutingIdError!void {
+    switch (zmq.zmq_msg_set_routing_id(&self.message, routing_id)) {
+        -1 => return switch (errno()) {
+            zmq.EINVAL => SetRoutingIdError.ZeroRoutingId,
+            else => SetRoutingIdError.Unexpected,
+        },
+        else => {},
+    }
+}
+
+pub fn getRoutingId(self: *Self) u32 {
+    return zmq.zmq_msg_routing_id(&self.message);
+}
+
+test "get and set routing id" {
+    const t = std.testing;
+
+    var msg: Self = .empty();
+    defer msg.deinit();
+
+    try t.expectEqual(0, msg.getRoutingId());
+    try t.expectEqual(SetRoutingIdError.ZeroRoutingId, msg.setRoutingId(0));
+    try msg.setRoutingId(1);
+    try t.expectEqual(1, msg.getRoutingId());
+}
