@@ -8,10 +8,8 @@ fn addPlatformValues(
 ) void {
     config_header.addValues(shared_values);
     config_header.addValues(.{
-        .ZMQ_USE_CV_IMPL_STL11 = {}, // LLVM for sure has std::condition_variable
         // TODO: Seems to be wrong when compared with `getconf LEVEL1_DCACHE_LINESIZE`
         .ZMQ_CACHELINE_SIZE = std.atomic.cacheLineForCpu(target.result.cpu),
-        .ZMQ_HAVE_NOEXCEPT = {}, // LLVM for sure supports `noexcept`
     });
 
     switch (options.poller) {
@@ -23,107 +21,8 @@ fn addPlatformValues(
         config_header.addValues(.{ .ZMQ_USE_RADIX_TREE = {} });
     }
 
-    const linux_values = .{
-        // `epoll_create` exits in `sys/epoll.h` and is preferred by the build script
-        .ZMQ_IOTHREAD_POLLER_USE_EPOLL = 1,
-        // `epoll_create1` exists in `sys/epoll.h`
-        .ZMQ_IOTHREAD_POLLER_USE_EPOLL_CLOEXEC = {},
-        // `posix_memalign` exists in `stdlib.h`
-        .HAVE_POSIX_MEMALIGN = {},
-        // `pselect` exists in `sys/select.h`
-        .ZMQ_HAVE_PPOLL = {},
-        // `fork` exists in `unistd.h`
-        .HAVE_FORK = {},
-        // `clock_gettime` exists in `time.h`
-        .HAVE_CLOCK_GETTIME = {},
-        // `gethrtime` does not exists in `sys/time.h`
-        // `mkdtemp` exists in `"stdlib.h;unistd.h"`
-        .HAVE_MKDTEMP = {},
-        // `sys/uio.h` exists
-        .ZMQ_HAVE_UIO = {},
-        // `sys/eventfd.h` exists
-        .ZMQ_HAVE_EVENTFD = {},
-        // `EFD_CLOEXEC` defined by `sys/eventfd.h`
-        // Linux >= 2.6.27 should have it defined
-        .ZMQ_HAVE_EVENTFD_CLOEXEC = {},
-        // `ifaddrs.h` exists
-        .ZMQ_HAVE_IFADDRS = {},
-        // `SO_BINDTODEVICE` defined by `sys/socket.h`
-        // Linux >= 2.0.30 should have it defined
-        .ZMQ_HAVE_SO_BINDTODEVICE = {},
-
-        // `SO_PEERCRED` exits in `sys/socket.h`
-        .ZMQ_HAVE_SO_PEERCRED = {},
-        // `LOCAL_PEERCRED` does not exits in `sys/socket.h`
-        .ZMQ_HAVE_LOCAL_PEERCRED = null,
-        // `SO_BUSY_POLL` exits in `sys/socket.h`
-        .ZMQ_HAVE_BUSY_POLL = {},
-
-        // `O_CLOEXEC` defined by `fcntl.h`
-        // Linux >= 2.6.23 should have it defined
-        .ZMQ_HAVE_O_CLOEXEC = {},
-
-        // `SOCK_CLOEXEC` defined by `sys/socket.h`
-        // Linux >= 2.6.27 should have it defined
-        .ZMQ_HAVE_SOCK_CLOEXEC = {},
-        // `SO_KEEPALIVE` defined by `sys/socket.h`
-        .ZMQ_HAVE_SO_KEEPALIVE = {},
-        // `SO_PRIORITY` defined by `sys/socket.h`
-        .ZMQ_HAVE_SO_PRIORITY = {},
-        // `TCP_KEEPCNT` defined by `netinet/tcp.h`
-        // Linux >= 2.4 should have it defined
-        .ZMQ_HAVE_TCP_KEEPCNT = {},
-        // `TCP_KEEPIDLE` defined by `netinet/tcp.h`
-        // Linux >= 2.4 should have it defined
-        .ZMQ_HAVE_TCP_KEEPIDLE = {},
-        // `TCP_KEEPINTVL` defined by `netinet/tcp.h`
-        // Linux >= 2.4 should have it defined
-        .ZMQ_HAVE_TCP_KEEPINTVL = {},
-        // `TCP_KEEPALIVE` not defined by `netinet/tcp.h`
-        .ZMQ_HAVE_TCP_KEEPALIVE = null,
-        // only `pthread_setname_np` accepting 2 parameters is defined in `pthread.h`
-        .ZMQ_HAVE_PTHREAD_SETNAME_1 = null,
-        .ZMQ_HAVE_PTHREAD_SETNAME_2 = {},
-        .ZMQ_HAVE_PTHREAD_SETNAME_3 = null,
-        // `pthread_set_name_np` does not exist in `pthread.h`
-        .ZMQ_HAVE_PTHREAD_SET_NAME = null,
-        // `pthread_setaffinity_np` exists in `pthread.h`
-        .ZMQ_HAVE_PTHREAD_SET_AFFINITY = {},
-        // `accept4` exists in `sys/socket.h`
-        .HAVE_ACCEPT4 = {},
-        // `strnlen` exists in `string.h`
-        .HAVE_STRNLEN = {},
-        // `strlcpy` does not exit in `string.h`
-        .ZMQ_HAVE_STRLCPY = null,
-
-        // Linux does indeed have IPC and `struct sockaddr_un`
-        .ZMQ_HAVE_IPC = {},
-        .ZMQ_HAVE_STRUCT_SOCKADDR_UN = {},
-
-        // TODO: Return to ZMQ_USE_BUILTIN_SHA1
-        // TODO: Return to ZMQ_USE_NSS
-        // TODO: Return to ZMQ_HAVE_WS
-        // TODO: Return to ZMQ_HAVE_WSS
-        // Linux supports TIPC
-        .ZMQ_HAVE_TIPC = {},
-
-        // TODO: Add an option for enabling OpenPGM
-        // TODO: Add an option for enabling NORM
-        // TODO: Add an option for enabling VMCI
-
-        // TODO: Add an option for enabling CURVE
-        // TODO: Add an option for using libsodium
-        // TODO: Add an option for using libgssapi_krb5
-        // TODO: Add an option for enabling TLS and find a way to find and link GnuTLS
-
-        // `if_nametoindex` exits in `net/if.h`
-        .HAVE_IF_NAMETOINDEX = {},
-    };
-
     switch (target.result.os.tag) {
-        .linux => {
-            config_header.addValues(linux_values);
-        },
+        .linux => config_header.addValues(linux_values),
         else => {},
     }
 }
@@ -153,6 +52,9 @@ fn buildLibzmq(
     library.root_module.addIncludePath(platform.getOutput().dirname());
     if (options.draft) {
         library.root_module.addCMacro("ZMQ_BUILD_DRAFT_API", "");
+    }
+    inline for (@typeInfo(@TypeOf(shared_values)).@"struct".fields) |field| {
+        library.root_module.addCMacro(field.name, "");
     }
     library.root_module.addCSourceFiles(.{
         .root = upstream.path("src"),
@@ -251,11 +153,6 @@ pub fn build(b: *std.Build) void {
     run_main_step.dependOn(&run_main.step);
 }
 
-const shared_values = .{
-    ._REENTRANT = {},
-    ._THREAD_SAFE = {},
-    .ZMQ_CUSTOM_PLATFORM_HPP = {},
-};
 const Poller = enum { poll, select };
 const Options = struct {
     poller: Poller,
@@ -263,6 +160,14 @@ const Options = struct {
     use_radix_tree: bool,
 };
 
+const shared_values = .{
+    ._REENTRANT = {},
+    ._THREAD_SAFE = {},
+
+    .ZMQ_CUSTOM_PLATFORM_HPP = {},
+    .ZMQ_USE_CV_IMPL_STL11 = {}, // LLVM for sure has std::condition_variable
+    .ZMQ_HAVE_NOEXCEPT = {}, // LLVM for sure supports `noexcept`
+};
 const zmq_source_files = [_][]const u8{
     // "ws_address.cpp",
     // "ws_connecter.cpp",
@@ -376,4 +281,101 @@ const zmq_source_files = [_][]const u8{
     "tipc_address.cpp",
     "tipc_connecter.cpp",
     "tipc_listener.cpp",
+};
+
+const linux_values = .{
+    // `epoll_create` exits in `sys/epoll.h` and is preferred by the build script
+    .ZMQ_IOTHREAD_POLLER_USE_EPOLL = 1,
+    // `epoll_create1` exists in `sys/epoll.h`
+    .ZMQ_IOTHREAD_POLLER_USE_EPOLL_CLOEXEC = {},
+    // `posix_memalign` exists in `stdlib.h`
+    .HAVE_POSIX_MEMALIGN = {},
+    // `pselect` exists in `sys/select.h`
+    .ZMQ_HAVE_PPOLL = {},
+    // `fork` exists in `unistd.h`
+    .HAVE_FORK = {},
+    // `clock_gettime` exists in `time.h`
+    .HAVE_CLOCK_GETTIME = {},
+    // `gethrtime` does not exists in `sys/time.h`
+    // `mkdtemp` exists in `"stdlib.h;unistd.h"`
+    .HAVE_MKDTEMP = {},
+    // `sys/uio.h` exists
+    .ZMQ_HAVE_UIO = {},
+    // `sys/eventfd.h` exists
+    .ZMQ_HAVE_EVENTFD = {},
+    // `EFD_CLOEXEC` defined by `sys/eventfd.h`
+    // Linux >= 2.6.27 should have it defined
+    .ZMQ_HAVE_EVENTFD_CLOEXEC = {},
+    // `ifaddrs.h` exists
+    .ZMQ_HAVE_IFADDRS = {},
+    // `SO_BINDTODEVICE` defined by `sys/socket.h`
+    // Linux >= 2.0.30 should have it defined
+    .ZMQ_HAVE_SO_BINDTODEVICE = {},
+
+    // `SO_PEERCRED` exits in `sys/socket.h`
+    .ZMQ_HAVE_SO_PEERCRED = {},
+    // `LOCAL_PEERCRED` does not exits in `sys/socket.h`
+    .ZMQ_HAVE_LOCAL_PEERCRED = null,
+    // `SO_BUSY_POLL` exits in `sys/socket.h`
+    .ZMQ_HAVE_BUSY_POLL = {},
+
+    // `O_CLOEXEC` defined by `fcntl.h`
+    // Linux >= 2.6.23 should have it defined
+    .ZMQ_HAVE_O_CLOEXEC = {},
+
+    // `SOCK_CLOEXEC` defined by `sys/socket.h`
+    // Linux >= 2.6.27 should have it defined
+    .ZMQ_HAVE_SOCK_CLOEXEC = {},
+    // `SO_KEEPALIVE` defined by `sys/socket.h`
+    .ZMQ_HAVE_SO_KEEPALIVE = {},
+    // `SO_PRIORITY` defined by `sys/socket.h`
+    .ZMQ_HAVE_SO_PRIORITY = {},
+    // `TCP_KEEPCNT` defined by `netinet/tcp.h`
+    // Linux >= 2.4 should have it defined
+    .ZMQ_HAVE_TCP_KEEPCNT = {},
+    // `TCP_KEEPIDLE` defined by `netinet/tcp.h`
+    // Linux >= 2.4 should have it defined
+    .ZMQ_HAVE_TCP_KEEPIDLE = {},
+    // `TCP_KEEPINTVL` defined by `netinet/tcp.h`
+    // Linux >= 2.4 should have it defined
+    .ZMQ_HAVE_TCP_KEEPINTVL = {},
+    // `TCP_KEEPALIVE` not defined by `netinet/tcp.h`
+    .ZMQ_HAVE_TCP_KEEPALIVE = null,
+    // only `pthread_setname_np` accepting 2 parameters is defined in `pthread.h`
+    .ZMQ_HAVE_PTHREAD_SETNAME_1 = null,
+    .ZMQ_HAVE_PTHREAD_SETNAME_2 = {},
+    .ZMQ_HAVE_PTHREAD_SETNAME_3 = null,
+    // `pthread_set_name_np` does not exist in `pthread.h`
+    .ZMQ_HAVE_PTHREAD_SET_NAME = null,
+    // `pthread_setaffinity_np` exists in `pthread.h`
+    .ZMQ_HAVE_PTHREAD_SET_AFFINITY = {},
+    // `accept4` exists in `sys/socket.h`
+    .HAVE_ACCEPT4 = {},
+    // `strnlen` exists in `string.h`
+    .HAVE_STRNLEN = {},
+    // `strlcpy` does not exit in `string.h`
+    .ZMQ_HAVE_STRLCPY = null,
+
+    // Linux does indeed have IPC and `struct sockaddr_un`
+    .ZMQ_HAVE_IPC = {},
+    .ZMQ_HAVE_STRUCT_SOCKADDR_UN = {},
+
+    // TODO: Return to ZMQ_USE_BUILTIN_SHA1
+    // TODO: Return to ZMQ_USE_NSS
+    // TODO: Return to ZMQ_HAVE_WS
+    // TODO: Return to ZMQ_HAVE_WSS
+    // Linux supports TIPC
+    .ZMQ_HAVE_TIPC = {},
+
+    // TODO: Add an option for enabling OpenPGM
+    // TODO: Add an option for enabling NORM
+    // TODO: Add an option for enabling VMCI
+
+    // TODO: Add an option for enabling CURVE
+    // TODO: Add an option for using libsodium
+    // TODO: Add an option for using libgssapi_krb5
+    // TODO: Add an option for enabling TLS and find a way to find and link GnuTLS
+
+    // `if_nametoindex` exits in `net/if.h`
+    .HAVE_IF_NAMETOINDEX = {},
 };
