@@ -23,6 +23,7 @@ pub const Socket = socket.Socket;
 pub const timers = @import("timers.zig");
 pub const Timers = timers.Timers;
 
+pub const curve = @import("curve.zig");
 pub const z85 = @import("z85.zig");
 
 pub const Version = struct {
@@ -78,5 +79,7 @@ comptime {
     std.testing.refAllDeclsRecursive(poller);
     std.testing.refAllDeclsRecursive(socket);
     std.testing.refAllDeclsRecursive(timers);
+
+    std.testing.refAllDeclsRecursive(curve);
     std.testing.refAllDeclsRecursive(z85);
 }

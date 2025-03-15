@@ -65,8 +65,8 @@ the underlying data)
 
 ### Curve
 
-- [ ] `zmq_curve_keypair`
-- [ ] `zmq_curve_public`
+- [X] `zmq_curve_keypair` -> `curve.keypair`
+- [X] `zmq_curve_public` -> `curve.publicKey`
 
 ### Polling
 
