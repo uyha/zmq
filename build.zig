@@ -1,92 +1,146 @@
 const std = @import("std");
+const Build = std.Build;
+
+fn addPlatformValues(
+    config_header: *Build.Step.ConfigHeader,
+    target: Build.ResolvedTarget,
+    options: Options,
+) void {
+    config_header.addValues(shared_values);
+    config_header.addValues(.{
+        .ZMQ_USE_CV_IMPL_STL11 = {}, // LLVM for sure has std::condition_variable
+        // TODO: Seems to be wrong when compared with `getconf LEVEL1_DCACHE_LINESIZE`
+        .ZMQ_CACHELINE_SIZE = std.atomic.cacheLineForCpu(target.result.cpu),
+        .ZMQ_HAVE_NOEXCEPT = {}, // LLVM for sure supports `noexcept`
+    });
+
+    switch (options.poller) {
+        .poll => config_header.addValues(.{ .ZMQ_POLL_BASED_ON_POLL = 1 }),
+        .select => config_header.addValues(.{ .ZMQ_POLL_BASED_ON_SELECT = 1 }),
+    }
+
+    if (options.use_radix_tree) {
+        config_header.addValues(.{ .ZMQ_USE_RADIX_TREE = {} });
+    }
+
+    const linux_values = .{
+        // `epoll_create` exits in `sys/epoll.h` and is preferred by the build script
+        .ZMQ_IOTHREAD_POLLER_USE_EPOLL = 1,
+        // `epoll_create1` exists in `sys/epoll.h`
+        .ZMQ_IOTHREAD_POLLER_USE_EPOLL_CLOEXEC = {},
+        // `posix_memalign` exists in `stdlib.h`
+        .HAVE_POSIX_MEMALIGN = {},
+        // `pselect` exists in `sys/select.h`
+        .ZMQ_HAVE_PPOLL = {},
+        // `fork` exists in `unistd.h`
+        .HAVE_FORK = {},
+        // `clock_gettime` exists in `time.h`
+        .HAVE_CLOCK_GETTIME = {},
+        // `gethrtime` does not exists in `sys/time.h`
+        // `mkdtemp` exists in `"stdlib.h;unistd.h"`
+        .HAVE_MKDTEMP = {},
+        // `sys/uio.h` exists
+        .ZMQ_HAVE_UIO = {},
+        // `sys/eventfd.h` exists
+        .ZMQ_HAVE_EVENTFD = {},
+        // `EFD_CLOEXEC` defined by `sys/eventfd.h`
+        // Linux >= 2.6.27 should have it defined
+        .ZMQ_HAVE_EVENTFD_CLOEXEC = {},
+        // `ifaddrs.h` exists
+        .ZMQ_HAVE_IFADDRS = {},
+        // `SO_BINDTODEVICE` defined by `sys/socket.h`
+        // Linux >= 2.0.30 should have it defined
+        .ZMQ_HAVE_SO_BINDTODEVICE = {},
+
+        // `SO_PEERCRED` exits in `sys/socket.h`
+        .ZMQ_HAVE_SO_PEERCRED = {},
+        // `LOCAL_PEERCRED` does not exits in `sys/socket.h`
+        .ZMQ_HAVE_LOCAL_PEERCRED = null,
+        // `SO_BUSY_POLL` exits in `sys/socket.h`
+        .ZMQ_HAVE_BUSY_POLL = {},
+
+        // `O_CLOEXEC` defined by `fcntl.h`
+        // Linux >= 2.6.23 should have it defined
+        .ZMQ_HAVE_O_CLOEXEC = {},
+
+        // `SOCK_CLOEXEC` defined by `sys/socket.h`
+        // Linux >= 2.6.27 should have it defined
+        .ZMQ_HAVE_SOCK_CLOEXEC = {},
+        // `SO_KEEPALIVE` defined by `sys/socket.h`
+        .ZMQ_HAVE_SO_KEEPALIVE = {},
+        // `SO_PRIORITY` defined by `sys/socket.h`
+        .ZMQ_HAVE_SO_PRIORITY = {},
+        // `TCP_KEEPCNT` defined by `netinet/tcp.h`
+        // Linux >= 2.4 should have it defined
+        .ZMQ_HAVE_TCP_KEEPCNT = {},
+        // `TCP_KEEPIDLE` defined by `netinet/tcp.h`
+        // Linux >= 2.4 should have it defined
+        .ZMQ_HAVE_TCP_KEEPIDLE = {},
+        // `TCP_KEEPINTVL` defined by `netinet/tcp.h`
+        // Linux >= 2.4 should have it defined
+        .ZMQ_HAVE_TCP_KEEPINTVL = {},
+        // `TCP_KEEPALIVE` not defined by `netinet/tcp.h`
+        .ZMQ_HAVE_TCP_KEEPALIVE = null,
+        // only `pthread_setname_np` accepting 2 parameters is defined in `pthread.h`
+        .ZMQ_HAVE_PTHREAD_SETNAME_1 = null,
+        .ZMQ_HAVE_PTHREAD_SETNAME_2 = {},
+        .ZMQ_HAVE_PTHREAD_SETNAME_3 = null,
+        // `pthread_set_name_np` does not exist in `pthread.h`
+        .ZMQ_HAVE_PTHREAD_SET_NAME = null,
+        // `pthread_setaffinity_np` exists in `pthread.h`
+        .ZMQ_HAVE_PTHREAD_SET_AFFINITY = {},
+        // `accept4` exists in `sys/socket.h`
+        .HAVE_ACCEPT4 = {},
+        // `strnlen` exists in `string.h`
+        .HAVE_STRNLEN = {},
+        // `strlcpy` does not exit in `string.h`
+        .ZMQ_HAVE_STRLCPY = null,
+
+        // Linux does indeed have IPC and `struct sockaddr_un`
+        .ZMQ_HAVE_IPC = {},
+        .ZMQ_HAVE_STRUCT_SOCKADDR_UN = {},
+
+        // TODO: Return to ZMQ_USE_BUILTIN_SHA1
+        // TODO: Return to ZMQ_USE_NSS
+        // TODO: Return to ZMQ_HAVE_WS
+        // TODO: Return to ZMQ_HAVE_WSS
+        // Linux supports TIPC
+        .ZMQ_HAVE_TIPC = {},
+
+        // TODO: Add an option for enabling OpenPGM
+        // TODO: Add an option for enabling NORM
+        // TODO: Add an option for enabling VMCI
+
+        // TODO: Add an option for enabling CURVE
+        // TODO: Add an option for using libsodium
+        // TODO: Add an option for using libgssapi_krb5
+        // TODO: Add an option for enabling TLS and find a way to find and link GnuTLS
+
+        // `if_nametoindex` exits in `net/if.h`
+        .HAVE_IF_NAMETOINDEX = {},
+    };
+
+    switch (target.result.os.tag) {
+        .linux => {
+            config_header.addValues(linux_values);
+        },
+        else => {},
+    }
+}
 
 fn buildLibzmq(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
+    b: *Build,
+    target: Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    options: Options,
 ) *std.Build.Step.Compile {
-    var platform_content = std.ArrayListUnmanaged(u8).empty;
-    {
-        platform_content.appendSlice(
-            b.allocator,
-            \\ #ifndef __ZMQ_PLATFORM_HPP_INCLUDED__
-            \\ #define __ZMQ_PLATFORM_HPP_INCLUDED__
-            \\
-            ,
-        ) catch @panic("OOM");
-        defer platform_content.appendSlice(b.allocator,
-            \\
-            \\ #endif
-        ) catch @panic("OOM");
-
-        // TODO: Check poller base on platform, for now, hardcoding for Linux
-        platform_content.appendSlice(b.allocator,
-            \\ #define ZMQ_USE_CV_IMPL_STL11
-            \\
-            \\ #define ZMQ_IOTHREAD_POLLER_USE_EPOLL
-            \\ #define ZMQ_IOTHREAD_POLLER_USE_EPOLL_CLOEXEC
-            \\ #define ZMQ_HAVE_PPOLL
-            \\
-            \\ #define ZMQ_POLL_BASED_ON_POLL
-            \\
-            \\ #define HAVE_POSIX_MEMALIGN 1
-            \\ #define ZMQ_CACHELINE_SIZE 64
-            \\
-            \\ #define HAVE_FORK
-            \\ #define HAVE_CLOCK_GETTIME
-            \\ #define HAVE_MKDTEMP
-            \\ #define ZMQ_HAVE_UIO
-            \\
-            \\ #define ZMQ_HAVE_NOEXCEPT
-            \\
-            \\ #define ZMQ_HAVE_EVENTFD
-            \\ #define ZMQ_HAVE_EVENTFD_CLOEXEC
-            \\ #define ZMQ_HAVE_IFADDRS
-            \\ #define ZMQ_HAVE_SO_BINDTODEVICE
-            \\
-            \\ #define ZMQ_HAVE_SO_PEERCRED
-            \\ #define ZMQ_HAVE_BUSY_POLL
-            \\
-            \\ #define ZMQ_HAVE_O_CLOEXEC
-            \\
-            \\ #define ZMQ_HAVE_SOCK_CLOEXEC
-            \\ #define ZMQ_HAVE_SO_KEEPALIVE
-            \\ #define ZMQ_HAVE_SO_PRIORITY
-            \\ #define ZMQ_HAVE_TCP_KEEPCNT
-            \\ #define ZMQ_HAVE_TCP_KEEPIDLE
-            \\ #define ZMQ_HAVE_TCP_KEEPINTVL
-            \\ #define ZMQ_HAVE_PTHREAD_SETNAME_2
-            \\ #define ZMQ_HAVE_PTHREAD_SET_AFFINITY
-            \\ #define HAVE_ACCEPT4
-            \\ #define HAVE_STRNLEN
-            \\
-            \\ #define ZMQ_HAVE_IPC
-            \\ #define ZMQ_HAVE_STRUCT_SOCKADDR_UN
-            \\
-            // TODO: Enable WS and GNUTLS after figuring out how to find and link to
-            // gnutls.h
-            \\ // #define ZMQ_HAVE_WS
-            \\ // #define ZMQ_HAVE_WSS
-            \\ #define ZMQ_HAVE_TIPC
-            \\
-            \\ // #define ZMQ_USE_GNUTLS
-            \\ #define ZMQ_USE_RADIX_TREE
-            \\ #define HAVE_IF_NAMETOINDEX
-            \\
-        ) catch @panic("OOM");
-
-        platform_content.appendSlice(b.allocator,
-            \\
-            \\ #define ZMQ_HAVE_LINUX
-            \\
-        ) catch @panic("OOM");
-    }
-    const platform = b.addWriteFile(
-        "libzmq/include/platform.hpp",
-        platform_content.items,
-    );
-
     const upstream = b.dependency("libzmq", .{});
+    var platform = b.addConfigHeader(.{
+        .style = .{ .cmake = upstream.path("builds/cmake/platform.hpp.in") },
+        .include_path = "platform.hpp",
+    }, .{});
+
+    addPlatformValues(platform, target, options);
 
     const library = b.addStaticLibrary(.{
         .name = "libzmq",
@@ -96,127 +150,27 @@ fn buildLibzmq(
     library.linkLibC();
     library.linkLibCpp();
 
-    library.root_module.addIncludePath(
-        platform.getDirectory().path(b, "libzmq/include"),
-    );
-    library.root_module.addCMacro("ZMQ_BUILD_DRAFT_API", "");
+    library.root_module.addIncludePath(platform.getOutput().dirname());
+    if (options.draft) {
+        library.root_module.addCMacro("ZMQ_BUILD_DRAFT_API", "");
+    }
     library.root_module.addCSourceFiles(.{
         .root = upstream.path("src"),
-        .files = &.{
-            // "ws_address.cpp",
-            // "ws_connecter.cpp",
-            // "ws_decoder.cpp",
-            // "ws_encoder.cpp",
-            // "ws_engine.cpp",
-            // "ws_listener.cpp",
-            // "wss_address.cpp",
-            // "wss_engine.cpp",
-            "precompiled.cpp",
-            "address.cpp",
-            "channel.cpp",
-            "client.cpp",
-            "clock.cpp",
-            "ctx.cpp",
-            "curve_mechanism_base.cpp",
-            "curve_client.cpp",
-            "curve_server.cpp",
-            "dealer.cpp",
-            "devpoll.cpp",
-            "dgram.cpp",
-            "dist.cpp",
-            "endpoint.cpp",
-            "epoll.cpp",
-            "err.cpp",
-            "fq.cpp",
-            "io_object.cpp",
-            "io_thread.cpp",
-            "ip.cpp",
-            "ipc_address.cpp",
-            "ipc_connecter.cpp",
-            "ipc_listener.cpp",
-            "kqueue.cpp",
-            "lb.cpp",
-            "mailbox.cpp",
-            "mailbox_safe.cpp",
-            "mechanism.cpp",
-            "mechanism_base.cpp",
-            "metadata.cpp",
-            "msg.cpp",
-            "mtrie.cpp",
-            "norm_engine.cpp",
-            "object.cpp",
-            "options.cpp",
-            "own.cpp",
-            "null_mechanism.cpp",
-            "pair.cpp",
-            "peer.cpp",
-            "pgm_receiver.cpp",
-            "pgm_sender.cpp",
-            "pgm_socket.cpp",
-            "pipe.cpp",
-            "plain_client.cpp",
-            "plain_server.cpp",
-            "poll.cpp",
-            "poller_base.cpp",
-            "polling_util.cpp",
-            "pollset.cpp",
-            "proxy.cpp",
-            "pub.cpp",
-            "pull.cpp",
-            "push.cpp",
-            "random.cpp",
-            "raw_encoder.cpp",
-            "raw_decoder.cpp",
-            "raw_engine.cpp",
-            "reaper.cpp",
-            "rep.cpp",
-            "req.cpp",
-            "router.cpp",
-            "select.cpp",
-            "server.cpp",
-            "session_base.cpp",
-            "signaler.cpp",
-            "socket_base.cpp",
-            "socks.cpp",
-            "socks_connecter.cpp",
-            "stream.cpp",
-            "stream_engine_base.cpp",
-            "sub.cpp",
-            "tcp.cpp",
-            "tcp_address.cpp",
-            "tcp_connecter.cpp",
-            "tcp_listener.cpp",
-            "thread.cpp",
-            "trie.cpp",
-            "radix_tree.cpp",
-            "v1_decoder.cpp",
-            "v1_encoder.cpp",
-            "v2_decoder.cpp",
-            "v2_encoder.cpp",
-            "v3_1_encoder.cpp",
-            "xpub.cpp",
-            "xsub.cpp",
-            "zmq.cpp",
-            "zmq_utils.cpp",
-            "decoder_allocators.cpp",
-            "socket_poller.cpp",
-            "timers.cpp",
-            "radio.cpp",
-            "dish.cpp",
-            "udp_engine.cpp",
-            "udp_address.cpp",
-            "scatter.cpp",
-            "gather.cpp",
-            "ip_resolver.cpp",
-            "zap_client.cpp",
-            "zmtp_engine.cpp",
-            "stream_connecter_base.cpp",
-            "stream_listener_base.cpp",
-            "tipc_address.cpp",
-            "tipc_connecter.cpp",
-            "tipc_listener.cpp",
-        },
+        .files = &zmq_source_files,
     });
+
+    // TODO: Support all the platforms that ZeroMQ supports
+    switch (target.result.os.tag) {
+        .linux => {},
+        else => |tag| {
+            const not_supported = b.addFail(std.fmt.allocPrint(
+                b.allocator,
+                "{s} is not supported",
+                .{@tagName(tag)},
+            ) catch @panic("OOM"));
+            library.step.dependOn(&not_supported.step);
+        },
+    }
     return library;
 }
 
@@ -224,7 +178,31 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const libzmq = buildLibzmq(b, target, optimize);
+    const poller = b.option(Poller, "poller",
+        \\ Choose polling system for zmq.poll, zmq.ppoll, and zmq.Poller.
+        \\ valid values are poll or select [default=poll unless POLLER=select]",
+    ) orelse .poll;
+    const draft = b.option(bool, "draft",
+        \\ Include the draft API
+    ) orelse true;
+    const use_radix_tree = b.option(
+        bool,
+        "use-radix-tree",
+        "Use radix tree implementation to manage subscriptions",
+    ) orelse draft;
+
+    const options: Options = .{
+        .poller = poller,
+        .draft = draft,
+        .use_radix_tree = use_radix_tree,
+    };
+
+    const libzmq = buildLibzmq(
+        b,
+        target,
+        optimize,
+        options,
+    );
 
     const upstream = b.dependency("libzmq", .{});
     const translate = b.addTranslateC(.{
@@ -272,3 +250,130 @@ pub fn build(b: *std.Build) void {
     const run_main_step = b.step("main", "Run main");
     run_main_step.dependOn(&run_main.step);
 }
+
+const shared_values = .{
+    ._REENTRANT = {},
+    ._THREAD_SAFE = {},
+    .ZMQ_CUSTOM_PLATFORM_HPP = {},
+};
+const Poller = enum { poll, select };
+const Options = struct {
+    poller: Poller,
+    draft: bool,
+    use_radix_tree: bool,
+};
+
+const zmq_source_files = [_][]const u8{
+    // "ws_address.cpp",
+    // "ws_connecter.cpp",
+    // "ws_decoder.cpp",
+    // "ws_encoder.cpp",
+    // "ws_engine.cpp",
+    // "ws_listener.cpp",
+    // "wss_address.cpp",
+    // "wss_engine.cpp",
+    "precompiled.cpp",
+    "address.cpp",
+    "channel.cpp",
+    "client.cpp",
+    "clock.cpp",
+    "ctx.cpp",
+    "curve_mechanism_base.cpp",
+    "curve_client.cpp",
+    "curve_server.cpp",
+    "dealer.cpp",
+    "devpoll.cpp",
+    "dgram.cpp",
+    "dist.cpp",
+    "endpoint.cpp",
+    "epoll.cpp",
+    "err.cpp",
+    "fq.cpp",
+    "io_object.cpp",
+    "io_thread.cpp",
+    "ip.cpp",
+    "ipc_address.cpp",
+    "ipc_connecter.cpp",
+    "ipc_listener.cpp",
+    "kqueue.cpp",
+    "lb.cpp",
+    "mailbox.cpp",
+    "mailbox_safe.cpp",
+    "mechanism.cpp",
+    "mechanism_base.cpp",
+    "metadata.cpp",
+    "msg.cpp",
+    "mtrie.cpp",
+    "norm_engine.cpp",
+    "object.cpp",
+    "options.cpp",
+    "own.cpp",
+    "null_mechanism.cpp",
+    "pair.cpp",
+    "peer.cpp",
+    "pgm_receiver.cpp",
+    "pgm_sender.cpp",
+    "pgm_socket.cpp",
+    "pipe.cpp",
+    "plain_client.cpp",
+    "plain_server.cpp",
+    "poll.cpp",
+    "poller_base.cpp",
+    "polling_util.cpp",
+    "pollset.cpp",
+    "proxy.cpp",
+    "pub.cpp",
+    "pull.cpp",
+    "push.cpp",
+    "random.cpp",
+    "raw_encoder.cpp",
+    "raw_decoder.cpp",
+    "raw_engine.cpp",
+    "reaper.cpp",
+    "rep.cpp",
+    "req.cpp",
+    "router.cpp",
+    "select.cpp",
+    "server.cpp",
+    "session_base.cpp",
+    "signaler.cpp",
+    "socket_base.cpp",
+    "socks.cpp",
+    "socks_connecter.cpp",
+    "stream.cpp",
+    "stream_engine_base.cpp",
+    "sub.cpp",
+    "tcp.cpp",
+    "tcp_address.cpp",
+    "tcp_connecter.cpp",
+    "tcp_listener.cpp",
+    "thread.cpp",
+    "trie.cpp",
+    "radix_tree.cpp",
+    "v1_decoder.cpp",
+    "v1_encoder.cpp",
+    "v2_decoder.cpp",
+    "v2_encoder.cpp",
+    "v3_1_encoder.cpp",
+    "xpub.cpp",
+    "xsub.cpp",
+    "zmq.cpp",
+    "zmq_utils.cpp",
+    "decoder_allocators.cpp",
+    "socket_poller.cpp",
+    "timers.cpp",
+    "radio.cpp",
+    "dish.cpp",
+    "udp_engine.cpp",
+    "udp_address.cpp",
+    "scatter.cpp",
+    "gather.cpp",
+    "ip_resolver.cpp",
+    "zap_client.cpp",
+    "zmtp_engine.cpp",
+    "stream_connecter_base.cpp",
+    "stream_listener_base.cpp",
+    "tipc_address.cpp",
+    "tipc_connecter.cpp",
+    "tipc_listener.cpp",
+};
