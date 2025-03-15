@@ -106,8 +106,8 @@ the underlying data)
 
 ### Z85
 
-- [ ] `zmq_z85_decode`
-- [ ] `zmq_z85_encode`
+- [X] `zmq_z85_encode` -> `z85.encode`
+- [X] `zmq_z85_decode` -> `z85.decode`
 
 ### Runtime inspection
 
