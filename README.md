@@ -71,7 +71,7 @@ the underlying data)
 ### Polling
 
 - [X] `zmq_poll` -> `poll.poll`
-- [ ] `zmq_ppoll`
+- [X] `zmq_ppoll` -> `poll.ppoll`
 
 ### Poller
 
