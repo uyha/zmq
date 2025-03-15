@@ -86,6 +86,27 @@ pub const Socket = opaque {
         };
     }
 
+    pub const ConnectPeerError = ConnectError || error{SocketNotPeer};
+    pub fn connectPeer(self: *Self, endpoint: [:0]const u8) ConnectPeerError!void {
+        if (zmq.zmq_connect_peer(self, endpoint.ptr) != -1) {
+            return;
+        }
+
+        return switch (errno()) {
+            zmq.EINVAL => ConnectPeerError.EndpointInvalid,
+            zmq.ETERM => ConnectPeerError.ContextInvalid,
+            zmq.ENOTSOCK => ConnectPeerError.SocketInvalid,
+            zmq.EPROTONOSUPPORT => ConnectPeerError.TransportNotSupported,
+            zmq.ENOCOMPATPROTO => ConnectPeerError.TransportNotCompatible,
+            zmq.EMTHREAD => ConnectPeerError.NoThreadAvaiable,
+            zmq.ENOTSUP => ConnectPeerError.SocketNotPeer,
+            else => |err| {
+                log("{s}\n", .{strerror(err)});
+                return ConnectPeerError.Unexpected;
+            },
+        };
+    }
+
     pub const DisconnectError = error{
         EndpointInvalid,
         ContextInvalid,
@@ -117,6 +138,7 @@ pub const Socket = opaque {
         defer socket.deinit();
 
         socket.connect("ipc://asdf") catch {};
+        socket.connectPeer("ipc://asdf") catch {};
         socket.disconnect("ipc://asdf") catch {};
     }
 

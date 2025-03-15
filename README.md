@@ -28,7 +28,7 @@ All the binding functions live in the `zmq` namespace.
 - [X] `zmq_bind` -> `Socket.bind`
 - [X] `zmq_close` -> `Socket.deinit`
 - [X] `zmq_connect` -> `Socket.connect`
-- [ ] `zmq_connect_peer`
+- [X] `zmq_connect_peer` -> `Socket.connectPeer`
 - [X] `zmq_disconnect` -> `Socket.disconnect`
 - [X] `zmq_getsockopt` -> `Socket.get`
 - [X] `zmq_recv` -> `Socket.recv`
