@@ -11,7 +11,7 @@ pub fn main() !void {
     var message: zmq.Message = .empty();
     defer message.deinit();
 
-    try socket.bind("ipc:///home/uy/Personal/playground/python/hello");
+    try socket.bind("tcp://*:8080");
 
     var poller: *zmq.Poller = try .init();
     try poller.add(socket, null, .in);
