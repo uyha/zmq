@@ -91,11 +91,10 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const poller = b.option(Poller, "poller",
-        \\ Choose polling system for zmq.poll, zmq.ppoll, and zmq.Poller.
-        \\ valid values are poll or select [default=poll unless POLLER=select]",
+        \\Choose polling system [default=poll].
     ) orelse .poll;
     const draft = b.option(bool, "draft",
-        \\ Include the draft API
+        \\Include the draft API
     ) orelse true;
     const use_radix_tree = b.option(
         bool,
