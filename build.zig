@@ -385,7 +385,7 @@ fn buildLibzmq(
     addPlatformValues(platform, target, options);
 
     const library = b.addStaticLibrary(.{
-        .name = "libzmq",
+        .name = "zmq",
         .target = target,
         .optimize = optimize,
         .strip = strip,
