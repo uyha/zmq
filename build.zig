@@ -42,7 +42,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    translate.defineCMacro("ZMQ_BUILD_DRAFT_API", "");
+    if (options.draft) {
+        translate.defineCMacro("ZMQ_BUILD_DRAFT_API", "");
+    }
+    inline for (@typeInfo(@TypeOf(shared_values)).@"struct".fields) |field| {
+        translate.defineCMacro(field.name, "");
+    }
     const libzmq_module = b.createModule(.{
         .root_source_file = translate.getOutput(),
         .target = target,
