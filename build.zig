@@ -1,91 +1,6 @@
 const std = @import("std");
 const Build = std.Build;
 
-fn addPlatformValues(
-    config_header: *Build.Step.ConfigHeader,
-    target: Build.ResolvedTarget,
-    options: Options,
-) void {
-    config_header.addValues(shared_values);
-    config_header.addValues(.{
-        // TODO: Seems to be wrong when compared with `getconf LEVEL1_DCACHE_LINESIZE`
-        .ZMQ_CACHELINE_SIZE = std.atomic.cacheLineForCpu(target.result.cpu),
-    });
-
-    switch (options.poller) {
-        .poll => config_header.addValues(.{ .ZMQ_POLL_BASED_ON_POLL = 1 }),
-        .select => config_header.addValues(.{ .ZMQ_POLL_BASED_ON_SELECT = 1 }),
-    }
-
-    if (options.use_radix_tree) {
-        config_header.addValues(.{ .ZMQ_USE_RADIX_TREE = {} });
-    }
-
-    switch (target.result.os.tag) {
-        .linux => {
-            config_header.addValues(linux_values);
-            if (target.result.isGnuLibC()) {
-                config_header.addValues(gnu_libc_values);
-            }
-            if (target.result.isMuslLibC()) {
-                config_header.addValues(musl_libc_values);
-            }
-        },
-        else => {},
-    }
-}
-
-fn buildLibzmq(
-    b: *Build,
-    target: Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    strip: bool,
-    options: Options,
-) *std.Build.Step.Compile {
-    const upstream = b.dependency("libzmq", .{});
-
-    var platform = b.addConfigHeader(.{
-        .style = .{ .cmake = upstream.path("builds/cmake/platform.hpp.in") },
-        .include_path = "platform.hpp",
-    }, .{});
-    // TODO: Support all the platforms that ZeroMQ supports
-    switch (target.result.os.tag) {
-        .linux => {},
-        else => |tag| {
-            const not_supported = b.addFail(std.fmt.allocPrint(
-                b.allocator,
-                "{s} is not supported",
-                .{@tagName(tag)},
-            ) catch @panic("OOM"));
-            platform.step.dependOn(&not_supported.step);
-        },
-    }
-    addPlatformValues(platform, target, options);
-
-    const library = b.addStaticLibrary(.{
-        .name = "libzmq",
-        .target = target,
-        .optimize = optimize,
-        .strip = strip,
-    });
-    library.linkLibC();
-    library.linkLibCpp();
-
-    library.root_module.addIncludePath(platform.getOutput().dirname());
-    if (options.draft) {
-        library.root_module.addCMacro("ZMQ_BUILD_DRAFT_API", "");
-    }
-    inline for (@typeInfo(@TypeOf(shared_values)).@"struct".fields) |field| {
-        library.root_module.addCMacro(field.name, "");
-    }
-    library.root_module.addCSourceFiles(.{
-        .root = upstream.path("src"),
-        .files = &zmq_source_files,
-    });
-
-    return library;
-}
-
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -402,3 +317,88 @@ const musl_libc_values = .{
     // `strlcpy` exits in `string.h`
     .ZMQ_HAVE_STRLCPY = {},
 };
+
+fn addPlatformValues(
+    config_header: *Build.Step.ConfigHeader,
+    target: Build.ResolvedTarget,
+    options: Options,
+) void {
+    config_header.addValues(shared_values);
+    config_header.addValues(.{
+        // TODO: Seems to be wrong when compared with `getconf LEVEL1_DCACHE_LINESIZE`
+        .ZMQ_CACHELINE_SIZE = std.atomic.cacheLineForCpu(target.result.cpu),
+    });
+
+    switch (options.poller) {
+        .poll => config_header.addValues(.{ .ZMQ_POLL_BASED_ON_POLL = 1 }),
+        .select => config_header.addValues(.{ .ZMQ_POLL_BASED_ON_SELECT = 1 }),
+    }
+
+    if (options.use_radix_tree) {
+        config_header.addValues(.{ .ZMQ_USE_RADIX_TREE = {} });
+    }
+
+    switch (target.result.os.tag) {
+        .linux => {
+            config_header.addValues(linux_values);
+            if (target.result.isGnuLibC()) {
+                config_header.addValues(gnu_libc_values);
+            }
+            if (target.result.isMuslLibC()) {
+                config_header.addValues(musl_libc_values);
+            }
+        },
+        else => {},
+    }
+}
+
+fn buildLibzmq(
+    b: *Build,
+    target: Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    strip: bool,
+    options: Options,
+) *std.Build.Step.Compile {
+    const upstream = b.dependency("libzmq", .{});
+
+    var platform = b.addConfigHeader(.{
+        .style = .{ .cmake = upstream.path("builds/cmake/platform.hpp.in") },
+        .include_path = "platform.hpp",
+    }, .{});
+    // TODO: Support all the platforms that ZeroMQ supports
+    switch (target.result.os.tag) {
+        .linux => {},
+        else => |tag| {
+            const not_supported = b.addFail(std.fmt.allocPrint(
+                b.allocator,
+                "{s} is not supported",
+                .{@tagName(tag)},
+            ) catch @panic("OOM"));
+            platform.step.dependOn(&not_supported.step);
+        },
+    }
+    addPlatformValues(platform, target, options);
+
+    const library = b.addStaticLibrary(.{
+        .name = "libzmq",
+        .target = target,
+        .optimize = optimize,
+        .strip = strip,
+    });
+    library.linkLibC();
+    library.linkLibCpp();
+
+    library.root_module.addIncludePath(platform.getOutput().dirname());
+    if (options.draft) {
+        library.root_module.addCMacro("ZMQ_BUILD_DRAFT_API", "");
+    }
+    inline for (@typeInfo(@TypeOf(shared_values)).@"struct".fields) |field| {
+        library.root_module.addCMacro(field.name, "");
+    }
+    library.root_module.addCSourceFiles(.{
+        .root = upstream.path("src"),
+        .files = &zmq_source_files,
+    });
+
+    return library;
+}
